@@ -1,0 +1,169 @@
+{% extends "layout.html" %}
+{% block title %}Camera{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>{{ t("camera_themes") }} 📷</h1>
+    <p class="muted">{{ t("pick_theme") }}</p>
+</div>
+
+<section class="themes-grid">
+    {% set theme_list = [
+        ("80s Retro", "#FF00FF", "sepia(0.3) hue-rotate(280deg) saturate(1.5)"),
+        ("Y2K", "#C0C0C0", "hue-rotate(180deg) saturate(1.3) brightness(1.1)"),
+        ("Halloween", "#FF6600", "hue-rotate(-20deg) saturate(1.4) contrast(1.1)"),
+        ("Korean Street", "#F5E6D3", "saturate(0.9) brightness(1.05)"),
+        ("Old Money", "#D4C5A9", "sepia(0.2) saturate(0.8)"),
+        ("Spring Picnic", "#FFB6C1", "hue-rotate(-10deg) saturate(1.2) brightness(1.1)"),
+        ("Goth Dark", "#2C2C2C", "grayscale(0.6) contrast(1.3) brightness(0.8)"),
+        ("Summer Beach", "#87CEEB", "saturate(1.3) brightness(1.15)"),
+        ("Winter Cozy", "#E8F4F8", "brightness(1.1) saturate(0.9)"),
+        ("Ramadan", "#FFD700", "sepia(0.3) hue-rotate(20deg) brightness(1.05)")
+    ] %}
+    {% for name, color, filter in theme_list %}
+    <button type="button" class="theme-btn" 
+            data-theme="{{ name }}" 
+            data-color="{{ color }}"
+            data-filter="{{ filter }}"
+            onclick="selectTheme(this)">
+        <div class="theme-swatch" style="background: {{ color }};"></div>
+        <span>{{ name }}</span>
+    </button>
+    {% endfor %}
+</section>
+
+<section class="camera-section">
+    <h2>{{ t("selected_theme") }}: <span id="theme-name">—</span></h2>
+    
+    <div class="camera-controls">
+        <button type="button" class="btn-primary" onclick="startCamera()">🎥 {{ t("open_camera") }}</button>
+        <button type="button" class="btn-secondary" onclick="stopCamera()">⏹ {{ t("stop") }}</button>
+        <button type="button" class="btn-primary" onclick="capturePhoto()">📸 {{ t("capture") }}</button>
+    </div>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <img id="snapshot" style="display: none;">
+    </div>
+
+    <div id="verdict" class="verdict-box" style="display: none;"></div>
+
+    <div class="camera-actions" id="actions" style="display: none;">
+        <button type="button" class="btn-primary" onclick="saveToWardrobe()">💾 {{ t("save_wardrobe") }}</button>
+        <button type="button" class="btn-secondary" onclick="retake()">🔄 {{ t("retake") }}</button>
+    </div>
+</section>
+
+<script>
+let currentTheme = null;
+let currentFilter = null;
+let currentColor = null;
+let stream = null;
+
+function selectTheme(btn) {
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTheme = btn.dataset.theme;
+    currentFilter = btn.dataset.filter;
+    currentColor = btn.dataset.color;
+    document.getElementById('theme-name').textContent = currentTheme;
+    
+    // Apply filter to live video
+    var video = document.getElementById('video');
+    if (video) video.style.filter = currentFilter;
+}
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        var video = document.getElementById('video');
+        video.srcObject = stream;
+        video.style.display = 'block';
+        document.getElementById('snapshot').style.display = 'none';
+        if (currentFilter) video.style.filter = currentFilter;
+    } catch (err) {
+        alert('Cannot access camera: ' + err.message);
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+        document.getElementById('video').style.display = 'none';
+    }
+}
+
+function capturePhoto() {
+    var video = document.getElementById('video');
+    if (!video.srcObject) {
+        alert('Open camera first');
+        return;
+    }
+    var canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.filter = currentFilter || 'none';
+    ctx.drawImage(video, 0, 0);
+    
+    var snapshot = document.getElementById('snapshot');
+    snapshot.src = canvas.toDataURL('image/png');
+    snapshot.style.filter = 'none';
+    snapshot.style.display = 'block';
+    video.style.display = 'none';
+    stopCamera();
+    
+    showVerdict();
+    document.getElementById('actions').style.display = 'flex';
+}
+
+function showVerdict() {
+    var verdict = document.getElementById('verdict');
+    var tips = {
+        '80s Retro': 'Bold colors work great with this retro theme',
+        'Y2K': 'Silver and metallic vibes - very 2000s',
+        'Halloween': 'Spooky vibes only - orange and black',
+        'Korean Street': 'Soft pastel tones would fit perfectly',
+        'Old Money': 'Neutral and timeless - classic choice',
+        'Spring Picnic': 'Florals and light colors - very fresh',
+        'Goth Dark': 'Dark and moody - very chic',
+        'Summer Beach': 'Bright and breezy - beach ready',
+        'Winter Cozy': 'Warm layers would complete this',
+        'Ramadan': 'Elegant and modest - beautiful choice'
+    };
+    var tip = tips[currentTheme] || 'Interesting choice';
+    verdict.innerHTML = '<strong>✅ ' + currentTheme + '</strong><br>' + tip;
+    verdict.style.display = 'block';
+}
+
+function saveToWardrobe() {
+    var snapshot = document.getElementById('snapshot');
+    var dataUrl = snapshot.src;
+    fetch('/camera/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            image: dataUrl,
+            theme: currentTheme
+        })
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            alert('Saved to wardrobe!');
+            window.location.href = '/wardrobe';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function retake() {
+    document.getElementById('snapshot').style.display = 'none';
+    document.getElementById('verdict').style.display = 'none';
+    document.getElementById('actions').style.display = 'none';
+    startCamera();
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+{% block title %}{{ trend.term }}{% endblock %}
+{% block main %}
+
+<a href="/trends" class="back-btn">← {{ t("back_to_trends") }}</a>
+
+<div class="trend-hero">
+    {% if trend.image_url %}
+    <img src="{{ trend.image_url }}" alt="{{ trend.term }}" class="trend-hero-img clickable" onclick="openLightbox(this.src)">
+    {% endif %}
+    <div class="trend-hero-content">
+        <h1>{{ trend.term }}</h1>
+        {% if trend.era %}<span class="tag">{{ trend.era }}</span>{% endif %}
+        <p class="trend-desc">{{ trend.description }}</p>
+        {% if trend.palette %}
+        <div class="palette" style="margin-top: 1rem;">
+            {% for color in trend.palette.split(',') %}
+                <span class="swatch" style="background: {{ color }};"></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<section class="how-to-section">
+    <h2 class="cute-heading">{{ t("what_is_it") }}</h2>
+    <div class="callout">
+        <p>{{ trend.description }}</p>
+    </div>
+</section>
+
+<section class="how-to-section">
+    <h2 class="cute-heading">{{ t("how_to_wear") }}</h2>
+    <div class="callout">
+        <p>{{ t("how_to_1") }}</p>
+        <p>{{ t("how_to_2") }}</p>
+    </div>
+</section>
+
+<section class="how-to-section">
+    <h2 class="cute-heading">{{ t("style_examples") }}</h2>
+    <div class="discover-masonry" id="trend-masonry">
+        {% for img in examples %}
+        <div class="insp-card">
+            <img src="{{ img.thumb or img.url }}" alt="{{ img.alt }}" loading="lazy" class="clickable" onclick="openLightbox(this.src)">
+            <div class="insp-overlay">
+                <form method="post" action="/discover/save">
+                    <input type="hidden" name="name" value="{{ trend.term }} inspiration">
+                    <input type="hidden" name="image" value="{{ img.url }}">
+                    <button class="btn-primary" type="submit">{{ t("save_to_wishlist") }}</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div id="trend-loading" style="text-align: center; padding: 2rem; color: var(--muted); font-family: Caveat, cursive;">{{ t("loading") }}</div>
+</section>
+
+<script>
+(function() {
+    let page = 2;
+    let loading = false;
+    let done = false;
+    const grid = document.getElementById('trend-masonry');
+    const loader = document.getElementById('trend-loading');
+    if (!grid) return;
+    const term = "{{ trend.term }}";
+
+    function loadMore() {
+        if (loading || done) return;
+        loading = true;
+        fetch('/api/images?q=' + encodeURIComponent(term + ' outfit fashion') + '&page=' + page)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.images || data.images.length === 0) {
+                    done = true;
+                    loader.textContent = '';
+                    return;
+                }
+                data.images.forEach(img => {
+                    const card = document.createElement('div');
+                    card.className = 'insp-card';
+                    card.innerHTML = '<img src="' + (img.thumb || img.url) + '" alt="" loading="lazy" class="clickable" onclick="openLightbox(this.src)">' +
+                        '<div class="insp-overlay"><form method="post" action="/discover/save">' +
+                        '<input type="hidden" name="name" value="' + term + ' inspiration">' +
+                        '<input type="hidden" name="image" value="' + img.url + '">' +
+                        '<button class="btn-primary" type="submit">{{ t("save_to_wishlist") }}</button>' +
+                        '</form></div>';
+                    grid.appendChild(card);
+                });
+                page++;
+                loading = false;
+            })
+            .catch(() => { loading = false; });
+    }
+
+    window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
+            loadMore();
+        }
+    });
+})();
+</script>
+
+{% endblock %}

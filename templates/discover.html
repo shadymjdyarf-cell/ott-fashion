@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}Discover{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Discover</h1>
+    <p class="muted">Endless fashion inspiration</p>
+</div>
+
+<form method="get" class="search" onsubmit="event.preventDefault(); startSearch();">
+    <input id="search-input" name="q" value="{{ q }}" placeholder="Search: korean fashion, street style, old money">
+    <button class="btn-primary" type="submit">Search</button>
+</form>
+
+<div class="discover-masonry" id="masonry"></div>
+
+<div id="loading" class="loading-text">Loading more...</div>
+
+<script>
+let currentQuery = "{{ q }}";
+let currentPage = 1;
+let loading = false;
+let finished = false;
+
+function cardHTML(img) {
+    return '<div class="insp-card">'
+        + '<img src="' + img.thumb + '" alt="' + img.alt.replace(/"/g, '') + '" loading="lazy" class="clickable" onclick="openLightbox(this.src)">'
+        + '<div class="insp-overlay">'
+        + '<form method="post" action="/discover/save">'
+        + '<input type="hidden" name="name" value="' + img.alt.replace(/"/g, '') + '">'
+        + '<input type="hidden" name="image" value="' + img.url + '">'
+        + '<button class="btn-primary" type="submit">Save</button>'
+        + '</form></div></div>';
+}
+
+function loadMore() {
+    if (loading || finished) return;
+    loading = true;
+    document.getElementById('loading').textContent = 'Loading...';
+
+    fetch('/api/images?q=' + encodeURIComponent(currentQuery) + '&page=' + currentPage)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.images || data.images.length === 0) {
+                finished = true;
+                document.getElementById('loading').textContent = 'No more images';
+                return;
+            }
+            const masonry = document.getElementById('masonry');
+            data.images.forEach(img => {
+                masonry.insertAdjacentHTML('beforeend', cardHTML(img));
+            });
+            currentPage++;
+            loading = false;
+            document.getElementById('loading').textContent = 'Loading more...';
+        })
+        .catch(err => {
+            loading = false;
+            document.getElementById('loading').textContent = 'Error loading images';
+        });
+}
+
+function startSearch() {
+    const q = document.getElementById('search-input').value.trim();
+    currentQuery = q || 'korean fashion';
+    currentPage = 1;
+    finished = false;
+    document.getElementById('masonry').innerHTML = '';
+    document.getElementById('loading').textContent = 'Loading...';
+    loadMore();
+}
+
+// Load first batch
+loadMore();
+
+// Infinite scroll
+window.addEventListener('scroll', () => {
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+        loadMore();
+    }
+});
+</script>
+
+{% endblock %}

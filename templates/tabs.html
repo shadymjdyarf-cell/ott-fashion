@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}Saved Tabs{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Saved Filters 📌</h1><p class="muted">Save your favorite filter combinations</p></div>
+<div class="form-card inline">
+    <h3>Save current filter</h3>
+    <form method="post">
+        <input type="hidden" name="action" value="save">
+        <input name="name" placeholder="Filter name (e.g. Casual Street)" required>
+        <input name="filters" placeholder="Filters (e.g. occasion=casual&style=street)">
+        <button class="btn-primary" type="submit">Save</button>
+    </form>
+</div>
+{% if saved %}
+<div class="grid">
+    {% for t in saved %}
+    <div class="card">
+        <h3>{{ t.name }}</h3>
+        <p class="muted" style="font-size: 0.8rem;">{{ t.filters }}</p>
+        <form method="post" action="/tabs">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="tab_id" value="{{ t.id }}">
+            <button class="btn-danger small">Delete</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No saved filters yet.</p>
+{% endif %}
+{% endblock %}

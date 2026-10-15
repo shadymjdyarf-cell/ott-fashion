@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}Weather{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Weather 🌤️</h1>
+    <p class="muted">Today's weather in {{ city }}</p>
+</div>
+{% if weather %}
+<div class="weather-card">
+    <div class="weather-emoji">{{ weather.emoji }}</div>
+    <div class="weather-temp">{{ weather.temp|round(1) }}°C</div>
+    <div class="weather-desc">{{ weather.desc }}</div>
+    <div class="weather-wind">💨 Wind: {{ weather.wind|round(1) }} km/h</div>
+</div>
+<div class="callout" style="margin-top: 1.5rem;">
+    <h3 style="font-family: Caveat, cursive; font-size: 1.4rem;">Styling tip</h3>
+    <p>{{ weather.suggestion }}</p>
+</div>
+<p style="text-align: center; margin-top: 1.5rem;">
+    <a href="/stylist" class="btn-primary">Get outfit for today →</a>
+</p>
+{% else %}
+<p class="empty">Could not fetch weather. Check your city in Profile.</p>
+{% endif %}
+{% endblock %}

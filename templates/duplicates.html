@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}Duplicates{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Duplicate Finder 🔍</h1>
+    <p class="muted">Items with the same name</p>
+</div>
+
+{% if duplicates %}
+<div class="callout" style="margin-bottom: 1.5rem;">
+    <p>Found <strong>{{ duplicates|length }}</strong> duplicate group(s) in your wardrobe.</p>
+</div>
+
+{% for name, items in duplicates.items() %}
+<section class="occasions">
+    <h2 class="cute-heading">"{{ items[0].name }}" × {{ items|length }}</h2>
+    <div class="grid">
+        {% for item in items %}
+        <div class="card">
+            {% if item.image_path %}
+                <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+            {% else %}
+                <div class="placeholder">{{ item.name[0]|upper }}</div>
+            {% endif %}
+            <h3>{{ item.name }}</h3>
+            <span class="tag">{{ item.occasion }}</span>
+            {% if item.color %}<p class="muted">Color: {{ item.color }}</p>{% endif %}
+            <p class="muted" style="font-size: 0.75rem;">Added: {{ item.created_at }}</p>
+            <form method="post" action="/wardrobe/delete/{{ item.id }}" onsubmit="return confirm('Delete this item?')">
+                <button class="btn-danger small">🗑️ Remove</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+
+<p style="text-align: center; margin-top: 2rem;">
+    <a href="/wardrobe" class="btn-secondary">← Back to Wardrobe</a>
+</p>
+
+{% else %}
+<div class="form-card center">
+    <h2>No duplicates found 🎉</h2>
+    <p class="muted">Your wardrobe is clean and organized!</p>
+    <a href="/wardrobe" class="btn-primary" style="margin-top: 1rem;">Back to Wardrobe</a>
+</div>
+{% endif %}
+
+{% endblock %}

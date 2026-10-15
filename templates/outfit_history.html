@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}My Outfits{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>My Outfits 🎨</h1>
+    <p class="muted">All the outfits you've created</p>
+</div>
+
+{% if stats.total > 0 %}
+<div class="stats">
+    <div class="stat"><span>{{ stats.total }}</span><small>Total outfits</small></div>
+    {% for occ, count in stats.by_occasion.items() %}
+        <div class="stat"><span>{{ count }}</span><small>{{ occ|capitalize }}</small></div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if outfits %}
+<div class="history-grid">
+    {% for o in outfits %}
+    <div class="history-card">
+        <div class="date">{{ o.created_at }}</div>
+        <h3>{{ o.title }}</h3>
+        <span class="tag">{{ o.occasion }}</span>
+        {% if o.items %}
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.8rem;">
+            {% for item in o.items %}
+            <div class="card" style="padding: 0.4rem;">
+                {% if item.image_path %}
+                    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" style="height: 70px; margin-bottom: 0.2rem;" class="clickable" onclick="openLightbox(this.src)">
+                {% else %}
+                    <div class="placeholder" style="height: 70px; font-size: 1.5rem; margin-bottom: 0.2rem;">{{ item.name[0]|upper }}</div>
+                {% endif %}
+                <small style="font-size: 0.7rem; display: block; text-align: center;">{{ item.name[:12] }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">You haven't created any outfits yet. Try the AI Stylist! ✨</p>
+{% endif %}
+
+{% endblock %}

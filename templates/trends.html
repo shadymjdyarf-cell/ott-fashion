@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block title %}Trends{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Trend Dictionary</h1>
+    <p class="muted">Discover the latest fashion trends from around the world</p>
+</div>
+
+<form method="get" class="search">
+    <input name="q" value="{{ q }}" placeholder="Search a trend... (e.g. Y2K)">
+    <button class="btn-primary" type="submit">Search</button>
+</form>
+
+<div class="source-buttons">
+    <form method="post" action="/trends/refresh" style="display:inline;">
+        <input type="hidden" name="source" value="all">
+        <button class="btn-primary" type="submit">Refresh All Sources</button>
+    </form>
+    <form method="post" action="/trends/refresh" style="display:inline;">
+        <input type="hidden" name="source" value="korean">
+        <button class="btn-secondary" type="submit">Korean Only</button>
+    </form>
+    <form method="post" action="/trends/refresh" style="display:inline;">
+        <input type="hidden" name="source" value="vogue">
+        <button class="btn-secondary" type="submit">Vogue</button>
+    </form>
+    <form method="post" action="/trends/refresh" style="display:inline;">
+        <input type="hidden" name="source" value="hypebeast">
+        <button class="btn-secondary" type="submit">Hypebeast</button>
+    </form>
+    <button class="btn-secondary" onclick="document.getElementById('add-trend-form').style.display='block'; this.style.display='none';">
+        Add Trend
+    </button>
+</div>
+
+<div id="add-trend-form" class="form-card" style="display:none; margin-top: 1rem;">
+    <h3>Add a new trend</h3>
+    <form method="post" action="/trends/add">
+        <input name="term" placeholder="Term (e.g. Balletcore)" required>
+        <input name="era" placeholder="Era (e.g. 2020s)">
+        <textarea name="description" placeholder="Description..."></textarea>
+        <input name="palette" placeholder="Colors (comma separated, e.g. #FFB6C1,#E6E6FA)">
+        <button class="btn-primary" type="submit">Add</button>
+    </form>
+</div>
+
+{% if trends %}
+<div class="discover-masonry">
+    {% for t in trends %}
+    <a href="/trend/{{ t.id }}" class="insp-card" style="text-decoration: none; display: block;">
+        {% if t.image_url %}
+            <img src="{{ t.image_url }}" alt="{{ t.term }}" loading="lazy">
+        {% else %}
+            <div class="placeholder" style="height: 200px; background: linear-gradient(135deg, var(--orange), var(--green)); display:flex; align-items:center; justify-content:center; color:#fff; font-family: Caveat, cursive; font-size:1.5rem;">{{ t.term[:1] }}</div>
+        {% endif %}
+        <div class="insp-overlay" style="opacity: 1; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%);">
+            <div style="color: #fff; width: 100%;">
+                <h3 style="font-family: Caveat, cursive; font-size: 1.4rem; margin-bottom: 0.3rem;">{{ t.term }}</h3>
+                {% if t.era %}<span class="tag" style="background: rgba(255,255,255,0.25); color: #fff;">{{ t.era }}</span>{% endif %}
+                <p style="font-size: 0.85rem; margin: 0.4rem 0; color: #f0f0f0;">{{ t.description[:100] }}{% if t.description|length > 100 %}...{% endif %}</p>
+                {% if t.palette %}
+                <div style="display:flex; gap:0.3rem; margin-top: 0.5rem;">
+                    {% for color in t.palette.split(',') %}
+                        <span style="width: 18px; height: 18px; border-radius: 50%; background: {{ color }}; border: 1.5px solid #fff;"></span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No matching trends. Try refreshing from sources.</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "layout.html" %}
+{% block title %}Profile{% endblock %}
+{% block main %}
+
+<div class="profile-header">
+    <div class="avatar-section">
+        <div class="avatar-wrapper">
+            {% if user.avatar_path %}
+                <img class="avatar-img" src="{{ url_for('static', filename=user.avatar_path) }}" alt="{{ user.username }}" onclick="openLightbox(this.src)">
+            {% elif user.avatar_emoji %}
+                <div class="avatar-emoji">{{ user.avatar_emoji }}</div>
+            {% elif user.avatar_type == 'dicebear' %}
+                <img class="avatar-img" src="{{ dicebear_url }}" alt="{{ user.username }}">
+            {% else %}
+                <img class="avatar-img" src="{{ seasonal_url }}" alt="{{ user.username }}">
+                <span class="seasonal-badge">{{ seasonal_emoji }}</span>
+            {% endif %}
+        </div>
+
+        <div class="avatar-actions">
+            <button class="btn-secondary small-btn" onclick="showPicker('upload')">Upload</button>
+            <button class="btn-secondary small-btn" onclick="showPicker('emoji')">Emoji</button>
+            <button class="btn-secondary small-btn" onclick="showPicker('style')">Avatar</button>
+            {% if user.avatar_path or user.avatar_emoji or user.avatar_type == 'dicebear' %}
+            <form method="post" action="/reset_avatar" style="display:inline;">
+                <button class="btn-danger small-btn" type="submit">Reset</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upload Form -->
+    <div id="picker-upload" class="form-card" style="display:none; max-width: 500px; margin: 1rem auto;">
+        <h3>Upload your photo</h3>
+        <form method="post" action="/upload_avatar" enctype="multipart/form-data">
+            <label class="btn-primary small-btn" style="display:block; text-align:center;">
+                Choose file
+                <input type="file" name="avatar" accept="image/*" onchange="this.form.submit()" style="display:none;">
+            </label>
+        </form>
+    </div>
+
+    <!-- Emoji Form -->
+    <div id="picker-emoji" class="form-card" style="display:none; max-width: 500px; margin: 1rem auto;">
+        <h3>Pick your emoji</h3>
+        <form method="post" action="/set_emoji_avatar" id="emoji-form">
+            <input type="hidden" name="emoji" id="selected-emoji">
+            <div class="emoji-picker">
+                {% for emoji in emoji_avatars %}
+                <button type="button" class="emoji-option" onclick="pickEmoji('{{ emoji }}', this)">{{ emoji }}</button>
+                {% endfor %}
+            </div>
+            <button class="btn-primary" type="submit" style="margin-top: 1rem; width: 100%;">Save emoji</button>
+        </form>
+    </div>
+
+    <!-- DiceBear Style Picker -->
+    <div id="picker-style" class="form-card" style="display:none; max-width: 700px; margin: 1rem auto;">
+        <h3>Choose avatar style</h3>
+        <p class="muted" style="margin-bottom: 1rem;">Each style creates a unique avatar just for you</p>
+        <form method="post" action="/set_avatar_style" id="style-form">
+            <input type="hidden" name="style" id="selected-style">
+            <div class="style-grid">
+                {% for s in style_previews %}
+                <div class="style-option" onclick="pickStyle('{{ s.id }}', this)">
+                    <img src="{{ s.url }}" alt="{{ s.name }}">
+                    <span>{{ s.name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="btn-primary" type="submit" style="margin-top: 1rem; width: 100%;">Save style</button>
+        </form>
+    </div>
+
+    <script>
+    function showPicker(type) {
+        ['upload', 'emoji', 'style'].forEach(function(t) {
+            document.getElementById('picker-' + t).style.display = 'none';
+        });
+        var el = document.getElementById('picker-' + type);
+        if (el) el.style.display = 'block';
+        el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+
+    function pickEmoji(e, btn) {
+        document.getElementById('selected-emoji').value = e;
+        document.querySelectorAll('.emoji-option').forEach(function(b) {
+            b.style.borderColor = 'var(--paper-line)';
+            b.style.background = 'var(--card)';
+        });
+        btn.style.borderColor = 'var(--orange)';
+        btn.style.background = 'var(--orange-soft)';
+    }
+
+    function pickStyle(sid, el) {
+        document.getElementById('selected-style').value = sid;
+        document.querySelectorAll('.style-option').forEach(function(b) {
+            b.style.borderColor = 'var(--paper-line)';
+            b.style.background = 'var(--card)';
+        });
+        el.style.borderColor = 'var(--orange)';
+        el.style.background = 'var(--orange-soft)';
+    }
+    </script>
+
+    <h1 class="profile-name">{{ user.username }}</h1>
+    <p class="muted">{{ user.email }}</p>
+    {% if user.city or user.country %}
+        <p class="muted">{{ user.city }}{% if user.city and user.country %}, {% endif %}{{ user.country }}</p>
+    {% endif %}
+    {% if user.bio %}
+        <p class="profile-bio">{{ user.bio }}</p>
+    {% endif %}
+</div>
+
+<div class="stats">
+    <div class="stat"><span>{{ counts.item_count }}</span><small>Wardrobe</small></div>
+    <div class="stat"><span>{{ counts.wishlist }}</span><small>Wishlist</small></div>
+    <div class="stat"><span>{{ counts.outfits }}</span><small>Outfits</small></div>
+</div>
+
+{% if recent_items %}
+<section class="occasions">
+    <h2 class="cute-heading">{{ t("recent_items") }}</h2>
+    <div class="grid">
+        {% for item in recent_items %}
+        <div class="card">
+            {% if item.image_path %}
+                <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+            {% else %}
+                <div class="placeholder">{{ item.name[0]|upper }}</div>
+            {% endif %}
+            <h3>{{ item.name }}</h3>
+            <span class="tag">{{ item.occasion }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="settings-section">
+    <h2 class="cute-heading">{{ t("edit_profile") }}</h2>
+    <div class="form-card">
+        <form method="post" action="/update_profile">
+            <label class="field-label">{{ t("username") }}</label>
+            <input name="username" value="{{ user.username }}" required>
+
+            <label class="field-label">{{ t("email") }}</label>
+            <input name="email" type="email" value="{{ user.email }}" required>
+
+            <label class="field-label">{{ t("city") }}</label>
+            <input name="city" value="{{ user.city or '' }}" placeholder="{{ t("city") }}">
+
+            <label class="field-label">{{ t("country") }}</label>
+            <input name="country" value="{{ user.country or '' }}" placeholder="{{ t("country") }}">
+
+            <label class="field-label">{{ t("bio") }}</label>
+            <textarea name="bio" maxlength="300" placeholder="Tell us about your style...">{{ user.bio or '' }}</textarea>
+
+            <button class="btn-primary" type="submit">{{ t("save_changes") }}</button>
+        </form>
+    </div>
+</section>
+
+<section class="settings-section">
+    <h2 class="cute-heading">{{ t("settings") }}</h2>
+    <div class="form-card center">
+        <div class="settings-actions">
+            <a href="/export" class="btn-primary">{{ t("export_data") }}</a>
+            <a href="/forgot" class="btn-secondary">{{ t("change_password") }}</a>
+            <button class="btn-danger" onclick="confirmDelete()">{{ t("delete_account") }}</button>
+        </div>
+    </div>
+</section>
+
+<div class="form-card center" id="delete-box" style="display:none;">
+    <h3>{{ t("confirm_deletion") }}</h3>
+    <p class="muted">Type your username and password to confirm - this cannot be undone</p>
+    <form method="post" action="/delete_account">
+        <input name="confirm_username" placeholder="Type your username" required>
+        <input name="confirm_password" type="password" placeholder="Your password" required>
+        <button class="btn-danger" type="submit">{{ t("delete_forever") }}</button>
+    </form>
+    <button class="btn-secondary" onclick="document.getElementById('delete-box').style.display='none'">{{ t("cancel") }}</button>
+</div>
+
+<script>
+function confirmDelete() {
+    document.getElementById('delete-box').style.display = 'block';
+    document.getElementById('delete-box').scrollIntoView({behavior: 'smooth'});
+}
+</script>
+
+{% endblock %}

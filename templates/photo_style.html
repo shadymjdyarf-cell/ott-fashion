@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}Photo Style{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Photo Style AI 📷</h1>
+    <p class="muted">Upload a photo — get outfit ideas from your wardrobe</p>
+</div>
+
+<div class="form-card inline">
+    <input type="file" id="photo-input" accept="image/*">
+    <canvas id="preview" style="max-width: 100%; border-radius: 14px; margin-top: 1rem; display: none;"></canvas>
+    <button class="btn-primary" onclick="analyzePhoto()" style="margin-top: 1rem;">🎨 Analyze & Style me</button>
+</div>
+
+<div id="result" style="display: none;">
+    <div class="callout" id="tip-box"></div>
+    <h2 class="cute-heading">Suggested items</h2>
+    <div class="grid" id="suggestions"></div>
+</div>
+
+<script>
+var img = new Image();
+document.getElementById('photo-input').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        img.src = ev.target.result;
+        img.onload = function() {
+            var canvas = document.getElementById('preview');
+            canvas.width = Math.min(img.width, 600);
+            canvas.height = img.height * (canvas.width / img.width);
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.style.display = 'block';
+        };
+    };
+    reader.readAsDataURL(file);
+});
+
+function getDominantColors() {
+    var canvas = document.getElementById('preview');
+    var ctx = canvas.getContext('2d');
+    var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    var buckets = {};
+    for (var i = 0; i < data.length; i += 40) {
+        var r = data[i], g = data[i+1], b = data[i+2];
+        var key = Math.floor(r/64) + '-' + Math.floor(g/64) + '-' + Math.floor(b/64);
+        buckets[key] = (buckets[key] || 0) + 1;
+    }
+    var sorted = Object.entries(buckets).sort(function(a,b){ return b[1] - a[1]; }).slice(0, 5);
+    var colors = sorted.map(function(kv) {
+        var parts = kv[0].split('-').map(Number);
+        var r = parts[0]*64+32, g = parts[1]*64+32, b = parts[2]*64+32;
+        return '#' + [r,g,b].map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+    });
+    return colors;
+}
+
+function colorName(hex) {
+    var r = parseInt(hex.substr(1,2), 16);
+    var g = parseInt(hex.substr(3,2), 16);
+    var b = parseInt(hex.substr(5,2), 16);
+    if (r > 200 && g > 200 && b > 200) return "white";
+    if (r < 60 && g < 60 && b < 60) return "black";
+    if (Math.abs(r-g) < 25 && Math.abs(g-b) < 25) return "grey";
+    if (r > g && g > b && r > 150 && g > 100 && b < 130) return "brown";
+    if (r > 150 && b > 130 && g < 130) return "pink";
+    if (b > r && b > g) return "blue";
+    if (g > r && g > b) return "green";
+    if (r > 180 && g > 130 && b < 100) return "orange";
+    return "beige";
+}
+
+function analyzePhoto() {
+    if (!img.src) { alert('Choose a photo first'); return; }
+    var colors = getDominantColors();
+    var colorNames = colors.map(colorName);
+    fetch('/photo-style/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: 'data:image/png;base64,aaa', colors: colorNames })
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (!data.ok) { alert('Error analyzing'); return; }
+        document.getElementById('tip-box').innerHTML = '<strong>Tip:</strong> ' + data.tip;
+        var grid = document.getElementById('suggestions');
+        grid.innerHTML = '';
+        data.suggested.forEach(function(item) {
+            var card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = (item.image ? '<img src="/static/' + item.image + '">' : '<div class="placeholder">' + item.name[0].toUpperCase() + '</div>') + '<h3>' + item.name + '</h3><span class="tag">' + (item.color || 'item') + '</span>';
+            grid.appendChild(card);
+        });
+        document.getElementById('result').style.display = 'block';
+    });
+}
+</script>
+{% endblock %}

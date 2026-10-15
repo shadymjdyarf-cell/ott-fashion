@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}OCR{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Read Text from Photo 📖</h1><p class="muted">Extract brand names from photos</p></div>
+<div class="form-card inline">
+    <input type="file" id="ocr-file" accept="image/*">
+    <button class="btn-primary" onclick="runOCR()" style="margin-top:1rem;">📖 Read text</button>
+</div>
+<div id="ocr-result" class="callout" style="display:none; margin-top: 1rem;">
+    <h3>Detected text:</h3>
+    <p id="ocr-text"></p>
+</div>
+<div id="ocr-status" class="muted" style="text-align:center; margin-top:1rem;"></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+function runOCR() {
+    var file = document.getElementById('ocr-file').files[0];
+    if (!file) { alert('Choose a file'); return; }
+    document.getElementById('ocr-status').textContent = 'Reading... (may take 10-30s)';
+    Tesseract.recognize(file, 'eng', {
+        logger: function(m) { if (m.status === 'recognizing text') document.getElementById('ocr-status').textContent = 'Progress: ' + Math.round(m.progress * 100) + '%'; }
+    }).then(function(res) {
+        document.getElementById('ocr-text').textContent = res.data.text || '(No text found)';
+        document.getElementById('ocr-result').style.display = 'block';
+        document.getElementById('ocr-status').textContent = 'Done ✅';
+    }).catch(function(e) {
+        document.getElementById('ocr-status').textContent = 'Error: ' + e.message;
+    });
+}
+</script>
+{% endblock %}

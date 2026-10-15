@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}Korean Brands{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Korean Brands 🇰🇷</h1><p class="muted">Best of K-fashion</p></div>
+<div class="brands-grid">
+    {% for b in brands %}
+    <div class="brand-card">
+        <h3>{{ b.name }}</h3>
+        <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin: 0.4rem 0;">
+            <span class="tag">{{ b.type }}</span>
+            <span class="tag" style="background:#FFF3D6;">{{ b.tier }}</span>
+        </div>
+        <p class="muted">{{ b.desc }}</p>
+        <a href="{{ b.url }}" target="_blank" class="link">Visit →</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Forgot Password{% endblock %}
+{% block main %}
+
+<div class="form-card">
+    <h1>{{ t("forgot_password") }}</h1>
+    <p class="muted">{{ t("forgot_desc") }}</p>
+
+    <form method="post">
+        <input name="username" placeholder="Username" required autofocus>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="new_password" type="password" placeholder="{{ t("new_password") }}" required>
+        <input name="confirm" type="password" placeholder="Confirm new password" required>
+        <button class="btn-primary" type="submit">{{ t("reset_password") }}</button>
+    </form>
+
+    <p class="muted center">
+        Remember it? <a href="/login">Login →</a>
+    </p>
+</div>
+
+{% endblock %}

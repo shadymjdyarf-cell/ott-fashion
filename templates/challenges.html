@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}Challenges{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Challenges 🎯</h1>
+    <form method="post" style="display:inline;">
+        <input type="hidden" name="action" value="new">
+        <button class="btn-primary" type="submit">+ New Challenge</button>
+    </form>
+</div>
+{% if active %}
+<section class="occasions">
+    <h2 class="cute-heading">Active</h2>
+    {% for c in active %}
+    <div class="card" style="margin-bottom: 1rem;">
+        <h3>{{ c.title }}</h3>
+        <p class="muted">{{ c.description }}</p>
+        <div style="margin: 0.5rem 0;">
+            <progress value="{{ c.progress or 0 }}" max="{{ c.target }}" style="width: 100%;"></progress>
+            <small>{{ c.progress or 0 }} / {{ c.target }}</small>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="progress">
+                <input type="hidden" name="challenge_id" value="{{ c.id }}">
+                <button class="btn-secondary small">+ Progress</button>
+            </form>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="challenge_id" value="{{ c.id }}">
+                <button class="btn-danger small">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+{% if completed %}
+<section class="occasions">
+    <h2 class="cute-heading">Completed 🏆</h2>
+    <ul class="history">
+        {% for c in completed %}
+        <li>✅ {{ c.title }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% if not active and not completed %}
+<p class="empty">No challenges yet. Start one today!</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}{{ t("login") }}{% endblock %}
+{% block main %}
+<div class="form-card">
+<h1>{{ t("welcome_back") }} 👋</h1>
+<p class="muted">{{ t("back_wardrobe") }}</p>
+<form method="post">
+<input name="username" placeholder="Username" required autofocus>
+<input name="password" type="password" placeholder="Password" required>
+<button class="btn-primary" type="submit">🔑 {{ t("login") }}</button>
+</form>
+<p class="muted center">{{ t("new_here") }} <a href="/register">{{ t("create_account") }} →</a></p>
+</div>
+{% endblock %}

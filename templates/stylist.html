@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% block title %}{{ t("ai_stylist") }}<script>
+function copyOutfitLink(id) {
+    var url = window.location.origin + '/outfit/' + id;
+    navigator.clipboard.writeText(url).then(function() {
+        alert('Link copied! ✅\n\n' + url);
+    }).catch(function() {
+        alert('Copy this link: ' + url);
+    });
+}
+</script>
+{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>{{ t("ai_stylist") }}</h1>
+    <p class="muted">{{ t("pick_occasion_desc") }} - get outfit ideas from your wardrobe + online</p>
+</div>
+
+<div class="form-card inline">
+    <form method="post">
+        <select name="occasion" required>
+            {% for key, label in occasions.items() %}
+                <option value="{{ key }}" {% if chosen_occasion == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="weather">
+            <option value="">{{ t("weather") }}</option>
+            <option value="hot">{{ t("hot") }}</option>
+            <option value="cold">{{ t("cold") }}</option>
+        </select>
+        <select name="mood">
+            <option value="">{{ t("mood") }}</option>
+            <option value="confident">{{ t("confident") }}</option>
+            <option value="chill">{{ t("chill") }}</option>
+            <option value="bold">{{ t("bold") }}</option>
+            <option value="soft">{{ t("soft") }}</option>
+            <option value="playful">{{ t("playful") }}</option>
+        </select>
+        <button class="btn-primary" type="submit">{{ t("style_me") }}</button>
+    </form>
+</div>
+
+{% if result is not none %}
+    {% if result %}
+        <section class="occasions">
+            <h2 class="cute-heading">{{ t("your_outfit") }}</h2>
+            <div class="grid">
+                {% for item in result %}
+                <div class="card">
+                    {% if item.image_path %}
+                        <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+                    {% else %}
+                        <div class="placeholder">{{ item.name[0]|upper }}</div>
+                    {% endif %}
+                    <h3>{{ item.name }}</h3>
+                    <span class="tag">{{ item.occasion }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="flash">Tip: {{ tip }}</div>
+            {% if reasons %}
+            <div class="callout" style="margin-top: 1rem;">
+                <h3 style="font-family: Caveat, cursive; font-size: 1.4rem; margin-bottom: 0.5rem;">Why this outfit?</h3>
+                <ul style="list-style: none; padding: 0;">
+                    {% for reason in reasons %}
+                        <li style="padding: 0.3rem 0;">• {{ reason }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </section>
+    {% else %}
+        <p class="empty">{{ tip }}</p>
+    {% endif %}
+{% endif %}
+
+{% if inspiration %}
+<section class="occasions">
+    <h2 class="cute-heading">{{ t("online_insp") }}</h2>
+    <p class="muted" style="margin-bottom: 1rem;">Ideas from around the world for {{ chosen_occasion }}</p>
+    <div class="discover-masonry">
+        {% for img in inspiration %}
+        <div class="insp-card">
+            <img src="{{ img.thumb or img.url }}" alt="{{ img.alt }}" loading="lazy" class="clickable" onclick="openLightbox(this.src)">
+            <div class="insp-overlay">
+                <form method="post" action="/discover/save">
+                    <input type="hidden" name="name" value="{{ img.alt }}">
+                    <input type="hidden" name="image" value="{{ img.url }}">
+                    <button class="btn-primary" type="submit">{{ t("save") }}</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if history %}
+<section class="occasions">
+    <h2 class="cute-heading">{{ t("recent_outfits") }}</h2>
+    <ul class="history">
+        {% for o in history %}
+            <li>
+                <strong>{{ o.title }}</strong> - {{ o.created_at }}
+                <button class="btn-secondary small" style="margin-left: 0.5rem;" onclick="copyOutfitLink({{ o.id }})">🔗 Share</button>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block main %}
+
+<section class="welcome">
+    <h1>{{ t("welcome") }}, {{ user.username }} 👋</h1>
+    <p class="confidence">{{ confidence }}</p>
+    <div class="daily-quote">
+        <span class="quote-icon">✨</span>
+        <p>{{ daily_quote }}</p>
+    </div>
+    <div class="streak-badge">
+        🔥 <strong>{{ streak }}</strong> day streak
+    </div>
+</section>
+
+{% if achievements %}
+<section class="achievements-section">
+    <h2 class="cute-heading">Achievements</h2>
+    <div class="achievements-grid">
+        {% for a in achievements %}
+        <div class="achievement-badge">
+            <span class="ach-icon">{{ a.icon }}</span>
+            <span class="ach-name">{{ a.name }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="stats">
+    <div class="stat"><span>{{ stats.wardrobe }}</span><small>👕 Wardrobe</small></div>
+    <div class="stat"><span>{{ stats.wishlist }}</span><small>💭 Wishlist</small></div>
+    <div class="stat"><span>{{ stats.outfits }}</span><small>🎨 Outfits</small></div>
+</section>
+
+<section class="actions">
+    <a href="/stylist" class="btn-primary">✨ {{ t("style_me") }}</a>
+    <a href="/wardrobe/add" class="btn-secondary">➕ {{ t("add_item") }}</a>
+</section>
+
+{% if discover_images %}
+<section class="home-discover-full">
+    <h2 class="cute-heading">{{ t("korean_insp") }}</h2>
+    <p class="muted" style="margin-bottom: 1rem;">{{ t("fresh_looks") }}</p>
+    <div class="discover-masonry" id="home-masonry">
+        {% for img in discover_images %}
+        <div class="insp-card">
+            <img src="{{ img.thumb or img.url }}" alt="{{ img.alt }}" loading="lazy" class="clickable" onclick="openLightbox(this.src)">
+            <div class="insp-overlay">
+                <form method="post" action="/discover/save">
+                    <input type="hidden" name="name" value="{{ img.alt }}">
+                    <input type="hidden" name="image" value="{{ img.url }}">
+                    <button class="btn-primary" type="submit">Save to Wishlist</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div id="home-loading" style="text-align: center; padding: 2rem; color: var(--muted); font-family: Caveat, cursive; font-size: 1.2rem;">{{ t("loading") }}</div>
+</section>
+
+<script>
+(function() {
+    let page = 2;
+    let loading = false;
+    let done = false;
+    const grid = document.getElementById('home-masonry');
+    const loader = document.getElementById('home-loading');
+    if (!grid) return;
+
+    function loadMore() {
+        if (loading || done) return;
+        loading = true;
+
+        fetch('/api/home-images?page=' + page)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.images || data.images.length === 0) {
+                    done = true;
+                    loader.textContent = '';
+                    return;
+                }
+                data.images.forEach(img => {
+                    const card = document.createElement('div');
+                    card.className = 'insp-card';
+                    card.innerHTML = '<img src="' + (img.thumb || img.url) + '"' alt="' + (img.alt || '').replace(/"/g, '') + '" loading="lazy" class="clickable" onclick="openLightbox(this.src)">' +
+                        '<div class="insp-overlay">' +
+                        '<form method="post" action="/discover/save">' +
+                        '<input type="hidden" name="name" value="' + (img.alt || '').replace(/"/g, '') + '">' +
+                        '<input type="hidden" name="image" value="' + img.url + '">' +
+                        '<button class="btn-primary" type="submit">Save to Wishlist</button>' +
+                        '</form></div>';
+                    grid.appendChild(card);
+                });
+                page++;
+                loading = false;
+            })
+            .catch(() => { loading = false; });
+    }
+
+    window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
+            loadMore();
+        }
+    });
+})();
+</script>
+{% endif %}
+
+{% if viral_items %}
+<section class="trending-now">
+    <h2 class="cute-heading">{{ t("trending_now") }}</h2>
+    <p class="muted" style="margin-bottom: 1rem;">{{ t("viral_picks") }}</p>
+    <div class="grid">
+        {% for item in viral_items %}
+        <div class="card">
+            {% if item.image_path %}
+                <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}">
+            {% else %}
+                <div class="placeholder">{{ item.name[0]|upper }}</div>
+            {% endif %}
+            <h3>{{ item.name }}</h3>
+            <span class="tag">{{ item.occasion }}</span>
+            <span class="tag tag-viral">Viral</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="occasions">
+    <h2 class="cute-heading">{{ t("browse") }}</h2>
+    <div class="chips">
+        {% for key, label in occasions.items() %}
+            <a class="chip" href="/wardrobe?occasion={{ key }}">{{ label }}</a>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}

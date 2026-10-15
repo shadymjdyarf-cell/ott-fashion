@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}Help{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>{{ t("how_to_use") }}</h1>
+    <p class="muted">{{ t("quick_guide") }} · 2 minutes read</p>
+</div>
+
+<section class="help-section">
+    <h2 class="cute-heading">{{ t("start_3") }}</h2>
+    <div class="steps-flow">
+        <div class="step-card">
+            <div class="step-num">1</div>
+            <h3>{{ t("sign_up") }}</h3>
+            <p>Any email works</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-card">
+            <div class="step-num">2</div>
+            <h3>{{ t("add_clothes") }}</h3>
+            <p>With photos</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step-card">
+            <div class="step-num">3</div>
+            <h3>{{ t("get_styled") }}</h3>
+            <p>Ask AI Stylist</p>
+        </div>
+    </div>
+</section>
+
+<section class="help-section">
+    <h2 class="cute-heading">What is inside</h2>
+    <div class="mindmap">
+        <div class="mindmap-center">옷 OTT</div>
+        <div class="mindmap-branches">
+            <div class="branch">Wardrobe</div>
+            <div class="branch">Wishlist</div>
+            <div class="branch">Trends</div>
+            <div class="branch">Stylist</div>
+            <div class="branch">Camera</div>
+            <div class="branch">Discover</div>
+        </div>
+    </div>
+</section>
+
+<section class="help-section">
+    <h2 class="cute-heading">{{ t("conf_first") }}</h2>
+    <div class="callout">
+        <p>Confidence is not in the clothes - it is in the one wearing them.</p>
+        <p>Wear what makes you feel good. That is the only rule.</p>
+    </div>
+</section>
+
+<section class="help-section">
+    <h2 class="cute-heading">{{ t("faq") }}</h2>
+    <details class="faq">
+        <summary>How do I add a photo?</summary>
+        <p>Open Add item and click Choose File under the image field.</p>
+    </details>
+    <details class="faq">
+        <summary>Can I delete an item?</summary>
+        <p>Yes - click the red Remove button under any item.</p>
+    </details>
+    <details class="faq">
+        <summary>What is DIY in Wishlist?</summary>
+        <p>Check the box if you want to make it yourself at home.</p>
+    </details>
+    <details class="faq">
+        <summary>How does AI Stylist work?</summary>
+        <p>It looks at your wardrobe and picks items for the chosen occasion.</p>
+    </details>
+    <details class="faq">
+        <summary>Does the site work offline?</summary>
+        <p>Once installed as an app, basics work. RSS and rates need internet.</p>
+    </details>
+    <details class="faq">
+        <summary>How do I change the language?</summary>
+        <p>Open the sidebar and choose EN, ع, or 한.</p>
+    </details>
+</section>
+
+{% endblock %}

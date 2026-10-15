@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}Wishlist{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>My Wishlist 💭</h1>
+</div>
+
+<div class="form-card inline">
+    <h3>Add a wish ➕</h3>
+    <form method="post" enctype="multipart/form-data">
+        <input name="name" placeholder="What do you want?" required>
+        <input name="link" placeholder="Link (optional)">
+        <input name="price_usd" type="number" step="0.01" placeholder="Price in USD (optional)">
+        <textarea name="description" placeholder="Details / inspiration..."></textarea>
+        <select name="priority">
+            <option value="low">Low priority</option>
+            <option value="medium" selected>Medium priority</option>
+            <option value="high">High priority</option>
+        </select>
+        <select name="status">
+            <option value="thinking" selected>Thinking about it</option>
+            <option value="searching">Searching for it</option>
+            <option value="found">Found it</option>
+            <option value="bought">Bought it</option>
+        </select>
+        <label class="checkbox">
+            <input type="checkbox" name="is_diy"> I want to make this at home (DIY)
+        </label>
+        <button class="btn-primary" type="submit">✨ Add wish</button>
+    </form>
+</div>
+
+<div class="chips" style="margin: 1rem 0;">
+    <a class="chip {% if not active_priority %}active{% endif %}" href="/wishlist">All</a>
+    <a class="chip {% if active_priority == 'high' %}active{% endif %}" href="/wishlist?priority=high">High</a>
+    <a class="chip {% if active_priority == 'medium' %}active{% endif %}" href="/wishlist?priority=medium">Medium</a>
+    <a class="chip {% if active_priority == 'low' %}active{% endif %}" href="/wishlist?priority=low">Low</a>
+</div>
+
+<div class="chips" style="margin-bottom: 1.5rem;">
+    <span class="chip-label">Status:</span>
+    <a class="chip chip-style {% if active_status == 'thinking' %}active{% endif %}" href="/wishlist?status=thinking">Thinking</a>
+    <a class="chip chip-style {% if active_status == 'searching' %}active{% endif %}" href="/wishlist?status=searching">Searching</a>
+    <a class="chip chip-style {% if active_status == 'found' %}active{% endif %}" href="/wishlist?status=found">Found</a>
+    <a class="chip chip-style {% if active_status == 'bought' %}active{% endif %}" href="/wishlist?status=bought">Bought</a>
+</div>
+
+{% if items %}
+<div class="grid">
+    {% for w in items %}
+    <div class="card">
+        {% if w.image_path %}
+            <img src="{{ url_for('static', filename=w.image_path) }}" alt="{{ w.name }}" class="clickable" onclick="openLightbox(this.src)">
+        {% elif w.link and ('jpg' in w.link or 'jpeg' in w.link or 'png' in w.link or 'webp' in w.link or 'unsplash' in w.link or 'pixabay' in w.link) %}
+            <img src="{{ w.link }}" alt="{{ w.name }}" loading="lazy" class="clickable" onclick="openLightbox(this.src)">
+        {% endif %}
+        <h3>{{ w.name }} {% if w.is_diy %}<span class="tag">DIY</span>{% endif %}</h3>
+        <div style="display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.3rem 0;">
+            {% if w.priority == 'high' %}<span class="tag" style="background:#FFD6D6;color:#C33;">High</span>{% endif %}
+            {% if w.priority == 'medium' %}<span class="tag">Medium</span>{% endif %}
+            {% if w.priority == 'low' %}<span class="tag" style="background:#E8F4F8;color:#4A90A4;">Low</span>{% endif %}
+            <span class="tag" style="background:#E8F5E9;color:#2E7D32;">{{ w.status|capitalize }}</span>
+        </div>
+        {% if w.description %}<p>{{ w.description }}</p>{% endif %}
+        {% if w.price_usd %}
+            <p class="price">${{ "%.2f"|format(w.price_usd) }} · ₩{{ "%.0f"|format(w.price_usd * rates.KRW) }} · EGP {{ "%.0f"|format(w.price_usd * rates.EGP) }}</p>
+        {% endif %}
+        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.4rem 0;">
+            <a href="/wishlist/{{ w.id }}/history" class="btn-secondary small" style="text-decoration:none; font-size: 0.75rem;">📊 Price History</a>
+        </div>
+        <form method="post" action="/wishlist/delete/{{ w.id }}">
+            <button class="btn-danger small">🗑️ Remove</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">Your wishlist is empty. Add what you are dreaming about ✨</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="{{ lang|default('en') }}" dir="{% if lang == 'ar' %}rtl{% else %}ltr{% endif %}" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google" content="notranslate">
+<title>OTT · 옷 — {% block title %}Fashion{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Inter:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#E67E22">
+</head>
+<body class="notranslate">
+
+<nav class="nav">
+    <a href="/" class="brand">
+        <span class="korean">옷</span>
+        <span class="name">OTT</span>
+    </a>
+    <button class="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+</nav>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <span class="sidebar-logo">옷 OTT</span>
+        <button class="close-btn" onclick="toggleSidebar()" aria-label="Close">×</button>
+    </div>
+    <nav class="sidebar-nav">
+        {% if session.user_id %}
+            <a href="/">{{ t("home") }}</a>
+            <a href="/wardrobe">{{ t("wardrobe") }}</a>
+            <a href="/wishlist">{{ t("wishlist") }}</a>
+            <a href="/trends">{{ t("trends") }}</a>
+            <a href="/stylist">{{ t("stylist") }}</a>
+            <a href="/outfits">Outfits</a>
+            <a href="/progress">Progress</a>
+            <a href="/journal">Journal</a>
+            <a href="/challenges">Challenges</a>
+            <a href="/calendar">Calendar</a>
+            <a href="/tabs">Saved Filters</a>
+            <a href="/weather">Weather</a>
+            <a href="/korean-size">Korean Sizes</a>
+            <a href="/k-hashtags">K-Hashtags</a>
+            <a href="/before-after">Before/After</a>
+            <a href="/photo-editor">Photo Editor</a>
+            <a href="/korean-brands">Korean Brands</a>
+            <a href="/ocr">OCR Reader</a>
+            <a href="/barcode">Barcode Scanner</a>
+            <a href="/camera">Camera</a>
+            <a href="/discover">Discover</a>
+            <a href="/community">Community</a>
+            <a href="/idol-match">K-Idol Match</a>
+            <a href="/fashion-weeks">Fashion Weeks</a>
+            <a href="/photo-style">Photo Style AI</a>
+            <a href="/preferences">Style DNA</a>
+            <a href="/search">Search</a>
+            <a href="/profile">{{ t("profile") }}</a>
+            <a href="/help">{{ t("help") }}</a>
+            <a href="#" onclick="toggleDark(); return false;">{{ t("dark") }}</a>
+            <a href="#" onclick="toggleDyslexia(); return false;">Dyslexia font</a>
+            <a href="#" onclick="toggleReduceMotion(); return false;">Reduce motion</a>
+            <a href="#" onclick="speakPage(); return false;">Read aloud</a>
+
+            <div class="sidebar-section">
+                <span class="sidebar-label">Color theme</span>
+                <div class="theme-picker">
+                    <button class="theme-dot active" data-theme="default" onclick="setColorTheme('default'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                    <button class="theme-dot" data-theme="lavender" onclick="setColorTheme('lavender'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                    <button class="theme-dot" data-theme="rose" onclick="setColorTheme('rose'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                    <button class="theme-dot" data-theme="ocean" onclick="setColorTheme('ocean'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                    <button class="theme-dot" data-theme="forest" onclick="setColorTheme('forest'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                    <button class="theme-dot" data-theme="sunset" onclick="setColorTheme('sunset'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <span class="sidebar-label">Text size</span>
+                <div class="font-size-btns">
+                    <button onclick="setFontSize('normal')">A</button>
+                    <button onclick="setFontSize('large')">A+</button>
+                    <button onclick="setFontSize('xl')">A++</button>
+                </div>
+            </div>
+
+            <div class="lang-switcher">
+                <span class="lang-label">Language</span>
+                <div class="lang-btns">
+                    <a href="/set_language/en" class="lang-btn {% if lang == 'en' %}active{% endif %}">EN</a>
+                    <a href="/set_language/ar" class="lang-btn {% if lang == 'ar' %}active{% endif %}">ع</a>
+                    <a href="/set_language/ko" class="lang-btn {% if lang == 'ko' %}active{% endif %}">한</a>
+                </div>
+            </div>
+            <a href="/logout" class="logout">{{ t("logout") }}</a>
+        {% else %}
+            <a href="/login">{{ t("login") }}</a>
+            <a href="/register">{{ t("register") }}</a>
+        {% endif %}
+    </nav>
+</aside>
+
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<div class="season-banner" style="background: {{ season_color }};">
+    <span>{{ season_emoji }}</span>
+    <span>{{ season_name }} Season</span>
+</div>
+
+<main class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for m in messages %}
+                <div class="flash">{{ m }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% block main %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <p>옷 OTT · Fashion for everyone</p>
+</footer>
+
+<script>
+window.OTT_LANG = "{{ lang|default('en') }}";
+window.OTT_TRANSLATIONS = { "en": {}, "ar": {}, "ko": {} };
+</script>
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+    document.getElementById('lightbox-img').src = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js');
+}
+</script>
+</body>
+</html>

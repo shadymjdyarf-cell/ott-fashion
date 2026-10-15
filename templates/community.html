@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block title %}Community{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Community 🎨</h1>
+    <p class="muted">Explore outfits from the OTT community</p>
+</div>
+
+{% if suggested %}
+<section class="occasions">
+    <h2 class="cute-heading">Discover people</h2>
+    <div class="grid">
+        {% for u in suggested %}
+        <a href="/u/{{ u.username }}" class="card" style="text-decoration:none; text-align: center;">
+            {% if u.avatar_path %}
+                <img src="{{ url_for('static', filename=u.avatar_path) }}" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;">
+            {% elif u.avatar_emoji %}
+                <div style="font-size:3rem;">{{ u.avatar_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;">
+            {% endif %}
+            <h3>{{ u.username }}</h3>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if outfits %}
+<section class="occasions">
+    <h2 class="cute-heading">Top outfits</h2>
+    <div class="grid">
+        {% for o in outfits %}
+        <a href="/o/{{ o.id }}" class="card" style="text-decoration:none;">
+            <h3>{{ o.title }}</h3>
+            <p class="muted">by <strong>{{ o.username }}</strong></p>
+            <span class="tag">{{ o.occasion }}</span>
+            <p class="muted">❤️ {{ o.likes }} · 💬 {{ o.comments }}</p>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<p class="empty">No outfits shared yet. Be the first! 🎨</p>
+{% endif %}
+
+{% endblock %}

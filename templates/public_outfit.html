@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ outfit.title }} · OTT</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Inter:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav class="nav">
+    <a href="/" class="brand">
+        <span class="korean">옷</span>
+        <span class="name">OTT</span>
+    </a>
+    <div class="links">
+        <a href="/register" class="btn-primary">Join 💛</a>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="public-outfit">
+        <div class="form-card" style="max-width: 700px;">
+            <span class="tag">{{ outfit.occasion }}</span>
+            <h1 style="font-family: Caveat, cursive; font-size: 2.5rem; margin: 0.5rem 0;">
+                {{ outfit.title }}
+            </h1>
+            <p class="muted">By {{ outfit.author }}</p>
+
+            <div class="grid" style="margin-top: 1.5rem;">
+                {% for item in outfit.items %}
+                <div class="card">
+                    {% if item.image_path %}
+                        <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}">
+                    {% else %}
+                        <div class="placeholder">{{ item.name[0]|upper }}</div>
+                    {% endif %}
+                    <h3>{{ item.name }}</h3>
+                    <span class="tag">{{ item.occasion }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <p style="text-align: center; margin-top: 2rem;">
+                <a href="/register" class="btn-primary">Create your own outfits →</a>
+            </p>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <p>옷 OTT · Fashion for everyone</p>
+</footer>
+
+</body>
+</html>

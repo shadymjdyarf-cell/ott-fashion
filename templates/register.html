@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}Join{% endblock %}
+{% block main %}
+<div class="form-card">
+<h1>{{ t("join_ott") }} 💛</h1>
+<p class="muted">옷 - Korean for clothes</p>
+<form method="post">
+<input name="username" placeholder="Username" required autofocus>
+<input name="email" type="email" placeholder="Email" required>
+<input name="city" placeholder="City (optional)">
+<input name="country" placeholder="Country (optional)">
+<input name="password" type="password" placeholder="Password" required>
+<input name="confirmation" type="password" placeholder="Confirm password" required>
+<button class="btn-primary" type="submit">✨ {{ t("create_account") }}</button>
+</form>
+<p class="muted center">{{ t("already_have") }} <a href="/login">{{ t("login") }} →</a></p>
+</div>
+{% endblock %}

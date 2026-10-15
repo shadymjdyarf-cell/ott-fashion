@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %}K-Hashtags{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Trending K-Hashtags #</h1>
+    <p class="muted">Popular hashtags in Korean fashion community</p>
+</div>
+<div class="hashtag-grid">
+    {% for h in hashtags %}
+    <div class="hashtag-card">
+        <h3>{{ h.tag }}</h3>
+        <p class="muted">{{ h.desc }}</p>
+        <button class="btn-secondary small" onclick="copyHashtag('{{ h.tag }}')">Copy</button>
+    </div>
+    {% endfor %}
+</div>
+<p id="copy-msg" class="muted" style="text-align: center; margin-top: 1rem; display: none;">Copied! ✅</p>
+<script>
+function copyHashtag(tag) {
+    navigator.clipboard.writeText(tag).then(function() {
+        var m = document.getElementById('copy-msg');
+        m.style.display = 'block';
+        setTimeout(function() { m.style.display = 'none'; }, 1500);
+    });
+}
+</script>
+{% endblock %}

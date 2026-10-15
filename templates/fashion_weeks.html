@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block title %}Fashion Weeks{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Fashion Weeks 🎬</h1>
+    <p class="muted">Latest from global runways</p>
+</div>
+
+<section class="occasions">
+    <h2 class="cute-heading">Major Fashion Weeks</h2>
+    <div class="grid">
+        {% for w in weeks %}
+        <div class="card">
+            <div style="font-size: 2.5rem; text-align: center;">{{ w.emoji }}</div>
+            <h3 style="text-align: center;">{{ w.name }}</h3>
+            <p class="muted" style="text-align: center;">{{ w.when }}</p>
+            <a href="{{ w.site }}" target="_blank" class="link" style="display: block; text-align: center;">Visit site →</a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% if runway %}
+<section class="occasions">
+    <h2 class="cute-heading">Latest runway news</h2>
+    <div class="grid">
+        {% for r in runway %}
+        <div class="card">
+            {% if r.image %}
+            <img src="{{ r.image }}" alt="{{ r.title }}" loading="lazy" class="clickable" onclick="openLightbox(this.src)">
+            {% endif %}
+            <h3>{{ r.title[:60] }}</h3>
+            <span class="tag">{{ r.source }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

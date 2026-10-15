@@ -1,0 +1,127 @@
+{% extends "layout.html" %}
+{% block title %}Search{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Search 🔍</h1>
+    <p class="muted">Find anything in OTT</p>
+</div>
+
+<form method="get" class="search" id="search-page-form" style="position: relative;">
+    <input name="q" id="search-page-input" value="{{ query }}" placeholder="Search items, wishes, trends..." autofocus style="padding-right: 60px;">
+    <button type="button" id="search-page-mic" class="mic-btn" title="Voice search">🎤</button>
+    <button class="btn-primary" type="submit">Search</button>
+</form>
+
+<script>
+(function() {
+    var mic = document.getElementById('search-page-mic');
+    var input = document.getElementById('search-page-input');
+    if (!mic || !input) return;
+
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+        mic.style.display = 'none';
+        return;
+    }
+
+    var rec = null;
+    var listening = false;
+
+    mic.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (listening && rec) {
+            rec.stop();
+            return;
+        }
+        rec = new SR();
+        rec.lang = 'en-US';
+        rec.continuous = false;
+        rec.interimResults = false;
+
+        rec.onstart = function() {
+            listening = true;
+            mic.innerHTML = '⏺';
+            mic.classList.add('listening');
+        };
+        rec.onresult = function(ev) {
+            var text = ev.results[0][0].transcript;
+            input.value = text;
+            document.getElementById('search-page-form').submit();
+        };
+        rec.onerror = function() {
+            listening = false;
+            mic.innerHTML = '🎤';
+            mic.classList.remove('listening');
+        };
+        rec.onend = function() {
+            listening = false;
+            mic.innerHTML = '🎤';
+            mic.classList.remove('listening');
+        };
+        rec.start();
+    });
+})();
+</script>
+
+{% if query %}
+    {% if items or wishlist or trends %}
+        <p class="muted" style="margin: 1rem 0;">
+            Found {{ items|length + wishlist|length + trends|length }} result(s) for "{{ query }}"
+        </p>
+    {% else %}
+        <p class="empty">No results found for "{{ query }}" 🔍</p>
+    {% endif %}
+
+    {% if items %}
+    <section class="occasions">
+        <h2 class="cute-heading">Wardrobe items ({{ items|length }})</h2>
+        <div class="grid">
+            {% for item in items %}
+            <div class="card">
+                {% if item.image_path %}
+                    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+                {% else %}
+                    <div class="placeholder">{{ item.name[0]|upper }}</div>
+                {% endif %}
+                <h3>{{ item.name }}</h3>
+                <span class="tag">{{ item.occasion }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if wishlist %}
+    <section class="occasions">
+        <h2 class="cute-heading">Wishlist ({{ wishlist|length }})</h2>
+        <div class="grid">
+            {% for w in wishlist %}
+            <div class="card">
+                <h3>{{ w.name }}</h3>
+                {% if w.description %}<p>{{ w.description[:80] }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if trends %}
+    <section class="occasions">
+        <h2 class="cute-heading">Trends ({{ trends|length }})</h2>
+        <div class="grid">
+            {% for t in trends %}
+            <div class="card">
+                {% if t.image_url %}
+                    <img src="{{ t.image_url }}" alt="{{ t.term }}" class="clickable" onclick="openLightbox(this.src)">
+                {% endif %}
+                <h3>{{ t.term }}</h3>
+                <p>{{ t.description[:80] }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

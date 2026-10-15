@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block title %}Before / After{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Before / After ✨</h1>
+    <p class="muted">Show your style transformations</p>
+</div>
+<div class="form-card inline">
+    <h3>Add transformation</h3>
+    <form method="post" enctype="multipart/form-data">
+        <input name="title" placeholder="Title (e.g. My summer glow up)" required>
+        <textarea name="note" placeholder="Story behind this change..."></textarea>
+        <label class="field-label">Before photo</label>
+        <input type="file" name="before" accept="image/*" required>
+        <label class="field-label">After photo</label>
+        <input type="file" name="after" accept="image/*" required>
+        <button class="btn-primary" type="submit">Save transformation</button>
+    </form>
+</div>
+{% if transformations %}
+<section class="occasions">
+    <h2 class="cute-heading">Your transformations</h2>
+    {% for t in transformations %}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3>{{ t.title }}</h3>
+        {% if t.note %}<p class="muted">{{ t.note }}</p>{% endif %}
+        <div class="ba-grid">
+            <div>
+                <span class="tag">Before</span>
+                <img src="{{ url_for('static', filename=t.before_path) }}" alt="Before" class="clickable" onclick="openLightbox(this.src)">
+            </div>
+            <div>
+                <span class="tag">After</span>
+                <img src="{{ url_for('static', filename=t.after_path) }}" alt="After" class="clickable" onclick="openLightbox(this.src)">
+            </div>
+        </div>
+        <form method="post" action="/before-after/delete/{{ t.id }}" style="margin-top: 0.8rem;">
+            <button class="btn-danger small">Delete</button>
+        </form>
+    </div>
+    {% endfor %}
+</section>
+{% else %}
+<p class="empty">No transformations yet. Add your first one!</p>
+{% endif %}
+{% endblock %}

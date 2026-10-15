@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+{% block title %}Wardrobe<script>
+var bulkMode = false;
+function toggleBulkMode() {
+    bulkMode = !bulkMode;
+    document.querySelectorAll('.bulk-check').forEach(function(cb) { cb.style.display = bulkMode ? 'block' : 'none'; if (!bulkMode) cb.checked = false; });
+    document.getElementById('bulk-bar').style.display = bulkMode ? 'flex' : 'none';
+    document.getElementById('bulk-btn').classList.toggle('active');
+    updateBulkCount();
+}
+function updateBulkCount() {
+    var count = document.querySelectorAll('.bulk-check:checked').length;
+    document.getElementById('bulk-count').textContent = count + ' selected';
+}
+function submitBulk() {
+    var count = document.querySelectorAll('.bulk-check:checked').length;
+    if (count === 0) { alert('Select items first'); return; }
+    if (confirm('Delete ' + count + ' items?')) {
+        document.getElementById('bulk-form').submit();
+    }
+}
+</script>
+{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>{{ t("my_wardrobe") }} 👕</h1>
+    <a href="/wardrobe/add" class="btn-primary">➕ Add item</a>
+</div>
+
+<div class="chips">
+    <a class="chip {% if not active and not active_style %}active{% endif %}" href="/wardrobe">All</a>
+    {% for key, label in occasions.items() %}
+        <a class="chip {% if active == key %}active{% endif %}" href="/wardrobe?occasion={{ key }}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+<div class="chips" style="margin-top: 0.5rem;">
+    <span class="chip-label">Style:</span>
+    {% for key, label in styles.items() %}
+        <a class="chip chip-style {% if active_style == key %}active{% endif %}" href="/wardrobe?style={{ key }}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+{% if inspiration %}
+<section class="wardrobe-insp">
+    <h2 class="cute-heading">{{ t("inspiration_for") }} {{ active or "you" }}</h2>
+    <div class="insp-strip">
+        {% for img in inspiration %}
+        <div class="insp-thumb">
+            <img src="{{ img.thumb or img.url }}" alt="{{ img.alt }}" loading="lazy">
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if items %}
+<div id="bulk-bar" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,var(--orange),var(--orange-soft)); color:#fff; padding:1rem 1.5rem; border-radius:999px; box-shadow:0 8px 24px rgba(230,126,34,0.4); z-index:1000; align-items:center; gap:1rem;">
+    <span id="bulk-count">0 selected</span>
+    <button type="button" class="btn-danger small" onclick="submitBulk()">🗑️ Delete</button>
+    <button type="button" class="btn-secondary small" onclick="toggleBulkMode()">Cancel</button>
+</div>
+
+<form method="post" action="/wardrobe/bulk_delete" id="bulk-form">
+<div class="grid" id="items-grid">
+    {% for item in items %}
+    <div class="card">
+        {% if item.image_path %}
+            <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+        {% else %}
+            <div class="placeholder">{{ item.name[0]|upper }}</div>
+        {% endif %}
+        <input type="checkbox" name="item_ids" value="{{ item.id }}" class="bulk-check" style="display:none; position:absolute; top:10px; left:10px; width:24px; height:24px; cursor:pointer; z-index:5;" onchange="updateBulkCount()">
+        <h3>{{ item.name }}</h3>
+        <div>
+            <span class="tag">{{ item.occasion }}</span>
+            {% if item.is_viral %}<span class="tag tag-viral">{{ t("viral") }}</span>{% endif %}
+        </div>
+        {% if item.color %}<p class="muted">Color: {{ item.color }}</p>{% endif %}
+        {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
+        <form method="post" action="/wardrobe/delete/{{ item.id }}" onsubmit="return confirm('{{ t("remove") }} this item?')">
+            <button class="btn-danger small">🗑️ {{ t("remove") }}</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">{{ t("no_items") }} ✨</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}{{ outfit.title }}{% endblock %}
+{% block main %}
+
+<a href="javascript:history.back()" class="back-btn">← Back</a>
+
+<div class="form-card" style="max-width: 800px;">
+    <h1 style="font-family: Caveat, cursive; font-size: 2.5rem;">{{ outfit.title }}</h1>
+    <p class="muted">by <a href="/u/{{ outfit.author.username }}" style="color: var(--orange);">{{ outfit.author.username }}</a></p>
+    <span class="tag">{{ outfit.occasion }}</span>
+
+    <div class="grid" style="margin-top: 1.5rem;">
+        {% for item in outfit.items %}
+        <div class="card">
+            {% if item.image_path %}
+                <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+            {% else %}
+                <div class="placeholder">{{ item.name[0]|upper }}</div>
+            {% endif %}
+            <h3>{{ item.name }}</h3>
+            <span class="tag">{{ item.occasion }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: center;">
+        <button class="btn-primary" onclick="toggleLike({{ outfit.id }})" id="like-btn">
+            {% if outfit.is_liked %}❤️ Liked{% else %}🤍 Like{% endif %}
+        </button>
+        <span style="align-self: center;">{{ outfit.likes }} likes</span>
+    </div>
+</div>
+
+<section class="occasions">
+    <h2 class="cute-heading">Comments ({{ comments|length }})</h2>
+    {% if session.user_id %}
+    <form method="post" action="/comment/{{ outfit.id }}" class="form-card inline">
+        <textarea name="text" placeholder="Add a comment..." required></textarea>
+        <button class="btn-primary" type="submit">Post</button>
+    </form>
+    {% endif %}
+    {% for c in comments %}
+    <div class="card" style="margin-bottom: 0.8rem;">
+        <p><strong>{{ c.username }}</strong> <small class="muted">{{ c.created_at }}</small></p>
+        <p>{{ c.text }}</p>
+        {% if c.user_id == session.user_id %}
+        <form method="post" action="/comment/delete/{{ c.id }}">
+            <button class="btn-danger small">Delete</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+
+<script>
+function toggleLike(outfitId) {
+    fetch('/like/' + outfitId, { method: 'POST' })
+        .then(r => r.json())
+        .then(function(data) {
+            var btn = document.getElementById('like-btn');
+            if (data.action === 'liked') btn.innerHTML = '❤️ Liked';
+            else btn.innerHTML = '🤍 Like';
+            setTimeout(function() { location.reload(); }, 400);
+        });
+}
+</script>
+{% endblock %}

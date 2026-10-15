@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}K-Pop Match{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Which Idol Matches Your Style? 🇰🇷✨</h1>
+    <p class="muted">Analyzed from your wardrobe</p>
+</div>
+
+{% if message %}
+<p class="empty">{{ message }}</p>
+{% else %}
+{% for m in matches %}
+<div class="idol-card" style="display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; background: var(--card); border: 2px solid var(--paper-line); border-radius: 16px; margin-bottom: 1rem; transition: all 0.2s;">
+    <div style="font-size: 4rem;">{{ m.idol.emoji }}</div>
+    <div style="flex: 1;">
+        <h2 style="font-family: Caveat, cursive; font-size: 2rem; margin: 0;">{{ m.idol.name }}</h2>
+        <p class="muted" style="margin: 0.2rem 0;">{{ m.idol.group }}</p>
+        <span class="tag">{{ m.idol.style }}</span>
+        <div class="match-bar" style="margin-top: 0.8rem; background: var(--paper-line); height: 12px; border-radius: 999px; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, var(--orange), var(--green)); height: 100%; width: {{ m.score }}%; transition: width 1s;"></div>
+        </div>
+        <p style="margin-top: 0.5rem; font-weight: 700;">{{ m.score }}% match</p>
+        {% if m.reasons %}
+        <p class="muted" style="font-size: 0.85rem;">{{ m.reasons|join(" · ") }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

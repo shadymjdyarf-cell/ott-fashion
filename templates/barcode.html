@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}Barcode Scanner{% endblock %}
+{% block main %}
+<div class="page-head">
+    <h1>Barcode Scanner 📷</h1>
+    <p class="muted">Scan product barcodes</p>
+</div>
+<div class="form-card inline" style="text-align:center;">
+    <button class="btn-primary" onclick="startScan()">🎥 Start camera scan</button>
+    <button class="btn-secondary" onclick="stopScan()" style="margin-left:0.5rem;">⏹ Stop</button>
+</div>
+<div id="scanner" style="max-width: 500px; margin: 1rem auto; border-radius: 14px; overflow: hidden; display:none;"></div>
+<div id="bc-result" class="callout" style="display:none; margin-top: 1rem;">
+    <h3>Barcode detected:</h3>
+    <p id="bc-code" style="font-family: monospace; font-size: 1.2rem;"></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script>
+function startScan() {
+    document.getElementById('scanner').style.display = 'block';
+    Quagga.init({
+        inputStream: { type: 'LiveStream', target: document.querySelector('#scanner') },
+        decoder: { readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader', 'upc_e_reader'] },
+        locate: true
+    }, function(err) {
+        if (err) { alert('Camera error: ' + err.message); return; }
+        Quagga.start();
+    });
+    Quagga.onDetected(function(res) {
+        var code = res.codeResult.code;
+        document.getElementById('bc-code').textContent = code;
+        document.getElementById('bc-result').style.display = 'block';
+        stopScan();
+    });
+}
+function stopScan() {
+    try { Quagga.stop(); } catch(e) {}
+}
+</script>
+{% endblock %}

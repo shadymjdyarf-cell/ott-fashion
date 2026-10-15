@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Journal{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Style Journal 📔</h1><p class="muted">Document your fashion journey</p></div>
+<div class="form-card inline">
+    <h3>New entry</h3>
+    <form method="post">
+        <textarea name="note" placeholder="What did you wear today? How did it feel?" required></textarea>
+        <select name="mood">
+            <option value="happy">Happy 😊</option>
+            <option value="confident">Confident 💪</option>
+            <option value="neutral" selected>Neutral 😐</option>
+            <option value="tired">Tired 😴</option>
+            <option value="excited">Excited ✨</option>
+        </select>
+        <button class="btn-primary" type="submit">Add entry</button>
+    </form>
+</div>
+{% if entries %}
+{% for e in entries %}
+<div class="card" style="margin-bottom: 1rem;">
+    <p class="muted" style="font-size: 0.8rem;">{{ e.created_at }} · {{ e.mood }}</p>
+    <p>{{ e.note }}</p>
+    <form method="post" action="/journal/delete/{{ e.id }}">
+        <button class="btn-danger small">Delete</button>
+    </form>
+</div>
+{% endfor %}
+{% else %}
+<p class="empty">No entries yet. Start journaling today.</p>
+{% endif %}
+{% endblock %}

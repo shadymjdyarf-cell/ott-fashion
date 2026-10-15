@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}Price History{% endblock %}
+{% block main %}
+<a href="/wishlist" class="back-btn">← Back</a>
+<div class="page-head"><h1>{{ item.name }} · Price History 📊</h1></div>
+<div class="form-card inline">
+    <h3>Update price</h3>
+    <form method="post" action="/wishlist/{{ item.id }}/price">
+        <input name="price" type="number" step="0.01" placeholder="New price (USD)" value="{{ item.price_usd or '' }}" required>
+        <input name="note" placeholder="Note (e.g. Sale, Original price)">
+        <button class="btn-primary" type="submit">Update</button>
+    </form>
+</div>
+{% if history %}
+<section class="occasions">
+    <h2 class="cute-heading">History</h2>
+    <ul class="history">
+        {% for h in history %}
+        <li>
+            <strong>${{ "%.2f"|format(h.price or 0) }}</strong>
+            {% if h.note %} — {{ h.note }}{% endif %}
+            <small class="muted" style="display: block;">{{ h.created_at }}</small>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% else %}
+<p class="empty">No price changes recorded yet.</p>
+{% endif %}
+{% endblock %}

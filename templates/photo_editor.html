@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block title %}Photo Editor{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Photo Editor 🎨</h1><p class="muted">Enhance your item photos</p></div>
+<div class="form-card inline">
+    <h3>Choose item</h3>
+    <select id="item-select" onchange="loadImage()">
+        <option value="">-- Select an item --</option>
+        {% for item in items %}
+        <option value="{{ item.id }}" data-src="{{ url_for('static', filename=item.image_path) }}">{{ item.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+<div id="editor" style="display:none; text-align:center;">
+    <canvas id="canvas" style="max-width:100%; border-radius:14px; margin: 1rem 0;"></canvas>
+    <div class="filter-picker">
+        <button class="btn-secondary small" onclick="applyFilter('none')">Original</button>
+        <button class="btn-secondary small" onclick="applyFilter('grayscale(100%)')">B&W</button>
+        <button class="btn-secondary small" onclick="applyFilter('sepia(80%)')">Sepia</button>
+        <button class="btn-secondary small" onclick="applyFilter('saturate(150%)')">Vivid</button>
+        <button class="btn-secondary small" onclick="applyFilter('brightness(1.2) contrast(1.1)')">Bright</button>
+        <button class="btn-secondary small" onclick="applyFilter('hue-rotate(30deg) saturate(1.2)')">Warm</button>
+        <button class="btn-secondary small" onclick="applyFilter('hue-rotate(-30deg) saturate(1.2)')">Cool</button>
+        <button class="btn-secondary small" onclick="applyFilter('blur(2px)')">Blur</button>
+    </div>
+    <p style="margin-top: 1rem;">
+        <button class="btn-primary" onclick="savePhoto()">💾 Save changes</button>
+    </p>
+</div>
+<script>
+var img = new Image();
+var currentFilter = 'none';
+var itemId = null;
+
+function loadImage() {
+    var sel = document.getElementById('item-select');
+    var opt = sel.options[sel.selectedIndex];
+    var src = opt.getAttribute('data-src');
+    itemId = sel.value;
+    if (!src) { document.getElementById('editor').style.display = 'none'; return; }
+    document.getElementById('editor').style.display = 'block';
+    img.crossOrigin = 'anonymous';
+    img.onload = function() { render(); };
+    img.src = src;
+}
+
+function render() {
+    var canvas = document.getElementById('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    var ctx = canvas.getContext('2d');
+    ctx.filter = currentFilter;
+    ctx.drawImage(img, 0, 0);
+}
+
+function applyFilter(f) {
+    currentFilter = f;
+    render();
+}
+
+function savePhoto() {
+    if (!itemId) return;
+    var canvas = document.getElementById('canvas');
+    var data = canvas.toDataURL('image/jpeg', 0.9);
+    fetch('/photo-editor/save/' + itemId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: data })
+    }).then(r => r.json()).then(function(res) {
+        if (res.ok) alert('Saved! ✅');
+        else alert('Error: ' + (res.error || 'unknown'));
+    });
+}
+</script>
+{% endblock %}

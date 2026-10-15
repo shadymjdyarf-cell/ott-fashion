@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block title %}{{ profile_user.username }}{% endblock %}
+{% block main %}
+
+<div class="profile-header">
+    <div class="avatar-section">
+        <div class="avatar-wrapper">
+            {% if profile_user.avatar_path %}
+                <img class="avatar-img" src="{{ url_for('static', filename=profile_user.avatar_path) }}" alt="{{ profile_user.username }}">
+            {% elif profile_user.avatar_emoji %}
+                <div class="avatar-emoji">{{ profile_user.avatar_emoji }}</div>
+            {% else %}
+                <img class="avatar-img" src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ profile_user.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" alt="{{ profile_user.username }}">
+            {% endif %}
+        </div>
+    </div>
+    <h1 class="profile-name">{{ profile_user.username }}</h1>
+    {% if profile_user.city or profile_user.country %}
+        <p class="muted">{{ profile_user.city }}{% if profile_user.city and profile_user.country %}, {% endif %}{{ profile_user.country }}</p>
+    {% endif %}
+    <p class="muted">🔥 {{ profile_user.streak or 1 }} day streak</p>
+
+    {% if current_uid and current_uid != profile_user.id %}
+        {% if is_following %}
+        <form method="post" action="/unfollow/{{ profile_user.id }}" style="margin-top: 1rem;">
+            <button class="btn-secondary" type="submit">Following ✓</button>
+        </form>
+        {% else %}
+        <form method="post" action="/follow/{{ profile_user.id }}" style="margin-top: 1rem;">
+            <button class="btn-primary" type="submit">Follow</button>
+        </form>
+        {% endif %}
+    {% endif %}
+</div>
+
+<div class="stats">
+    <div class="stat"><span>{{ stats.items }}</span><small>Items</small></div>
+    <div class="stat"><span>{{ stats.outfits }}</span><small>Outfits</small></div>
+    <div class="stat"><span>{{ stats.followers }}</span><small>Followers</small></div>
+    <div class="stat"><span>{{ stats.following }}</span><small>Following</small></div>
+</div>
+
+{% if outfits %}
+<section class="occasions">
+    <h2 class="cute-heading">Outfits</h2>
+    <div class="grid">
+        {% for o in outfits %}
+        <a href="/o/{{ o.id }}" class="card" style="text-decoration:none;">
+            <h3>{{ o.title }}</h3>
+            <span class="tag">{{ o.occasion }}</span>
+            <p class="muted">❤️ {{ o.likes }} · 💬 {{ o.comments }}</p>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<p class="empty">No outfits shared yet.</p>
+{% endif %}
+
+{% endblock %}

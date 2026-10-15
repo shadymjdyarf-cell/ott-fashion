@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block title %}Calendar{% endblock %}
+{% block main %}
+<div class="page-head"><h1>My Calendar 📅</h1><p class="muted">Save your upcoming occasions</p></div>
+<div class="form-card inline">
+    <h3>Add event</h3>
+    <form method="post">
+        <input type="hidden" name="action" value="add">
+        <input name="title" placeholder="Event name (e.g. Wedding)" required>
+        <input name="date" type="date" required>
+        <select name="occasion">
+            {% for key, label in occasions.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn-primary" type="submit">Add</button>
+    </form>
+</div>
+{% if events %}
+<div class="grid">
+    {% for e in events %}
+    <div class="card">
+        <h3>{{ e.title }}</h3>
+        <span class="tag">{{ e.occasion }}</span>
+        <p class="muted">{{ e.date }}</p>
+        <form method="post" action="/calendar">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="event_id" value="{{ e.id }}">
+            <button class="btn-danger small">Delete</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No events yet. Add your first occasion.</p>
+{% endif %}
+{% endblock %}

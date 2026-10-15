@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}Add Item{% endblock %}
+{% block main %}
+
+<div class="form-card">
+    <h1>{{ t("add_piece") }} ➕</h1>
+    <p class="muted">Give it a name and pick an occasion</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <input name="name" placeholder="Name (e.g. White tee)" required autofocus>
+        <select name="occasion" required>
+            <option value="" disabled selected>{{ t("pick_occasion") }}</option>
+            {% for key, label in occasions.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="style">
+            <option value="">{{ t("pick_style") }}</option>
+            <option value="kpop">K-Pop</option>
+            <option value="oldmoney">Old Money</option>
+            <option value="street">Street</option>
+            <option value="minimal">Minimal</option>
+            <option value="boho">Boho</option>
+            <option value="classic">Classic</option>
+            <option value="retro">Retro</option>
+            <option value="korean">Korean</option>
+            <option value="vintage">Vintage</option>
+        </select>
+        <input name="color" placeholder="Color (optional)">
+        <textarea name="notes" placeholder="Notes (fabric, fit, styling idea...)"></textarea>
+        <label class="file-label">
+            <span>{{ t("upload_photo") }}</span>
+            <input type="file" name="image" accept="image/*">
+        </label>
+        <button class="btn-primary" type="submit">✨ {{ t("add_to_wardrobe") }}</button>
+    </form>
+
+    <p class="muted center"><a href="/wardrobe">← {{ t("back_to_wardrobe") }}</a></p>
+</div>
+
+{% endblock %}

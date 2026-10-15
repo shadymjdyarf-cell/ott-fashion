@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}Progress{% endblock %}
+{% block main %}
+<div class="page-head"><h1>Your Progress 📊</h1><p class="muted">Your fashion journey in numbers</p></div>
+<div class="stats">
+    <div class="stat"><span>{{ streak }}</span><small>Day Streak 🔥</small></div>
+    <div class="stat"><span>{{ total_items }}</span><small>Items 👕</small></div>
+    <div class="stat"><span>{{ total_outfits }}</span><small>Outfits 🎨</small></div>
+    <div class="stat"><span>{{ total_wishes }}</span><small>Wishes 💭</small></div>
+</div>
+<section class="occasions">
+    <h2 class="cute-heading">Your Favorites</h2>
+    <div class="stats">
+        <div class="stat"><span>{{ top_occasion }}</span><small>Top Occasion</small></div>
+        <div class="stat"><span>{{ top_color }}</span><small>Top Color</small></div>
+        <div class="stat"><span>{{ top_style }}</span><small>Top Style</small></div>
+    </div>
+</section>
+{% if most_worn %}
+<section class="occasions">
+    <h2 class="cute-heading">Most Used Items</h2>
+    <ul class="history">
+        {% for item in most_worn %}
+        <li><strong>{{ item.name }}</strong> — {{ item.worn_count or 0 }} times</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

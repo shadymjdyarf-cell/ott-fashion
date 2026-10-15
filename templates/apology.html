@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block title %}Oops{% endblock %}
+{% block main %}
+<div class="form-card center">
+<h1 class="error-code">{{ code }}</h1>
+<p class="error-msg">{{ message }}</p>
+<a href="/" class="btn-primary">🏠 Take me home</a>
+</div>
+{% endblock %}
