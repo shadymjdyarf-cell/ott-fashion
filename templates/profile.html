@@ -1,193 +1,157 @@
 {% extends "layout.html" %}
-{% block title %}Profile{% endblock %}
+{% block title %}Profile<style>
+.profile-actions-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 1rem 0;
+}
+</style>
+{% endblock %}
 {% block main %}
 
-<div class="profile-header">
-    <div class="avatar-section">
-        <div class="avatar-wrapper">
-            {% if user.avatar_path %}
-                <img class="avatar-img" src="{{ url_for('static', filename=user.avatar_path) }}" alt="{{ user.username }}" onclick="openLightbox(this.src)">
-            {% elif user.avatar_emoji %}
-                <div class="avatar-emoji">{{ user.avatar_emoji }}</div>
-            {% elif user.avatar_type == 'dicebear' %}
-                <img class="avatar-img" src="{{ dicebear_url }}" alt="{{ user.username }}">
-            {% else %}
-                <img class="avatar-img" src="{{ seasonal_url }}" alt="{{ user.username }}">
-                <span class="seasonal-badge">{{ seasonal_emoji }}</span>
-            {% endif %}
+<div class="insta-profile">
+
+    <!-- Header -->
+    <div class="insta-header">
+        <div class="insta-avatar-wrap">
+            <div class="{% if has_active_story %}profile-story-ring{% endif %}" {% if has_active_story %}onclick="openOwnStory({{ active_story_id }})" style="cursor:pointer;"{% endif %}>
+                {% if user.avatar_path %}
+                    <img src="{{ url_for('static', filename=user.avatar_path) }}" class="insta-avatar">
+                {% elif user.avatar_emoji %}
+                    <div class="insta-avatar-emoji">{{ user.avatar_emoji }}</div>
+                {% else %}
+                    <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ user.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="insta-avatar">
+                {% endif %}
+            </div>
+            <a href="/story/new" class="add-story-btn" title="Add story">+</a>
         </div>
 
-        <div class="avatar-actions">
-            <button class="btn-secondary small-btn" onclick="showPicker('upload')">Upload</button>
-            <button class="btn-secondary small-btn" onclick="showPicker('emoji')">Emoji</button>
-            <button class="btn-secondary small-btn" onclick="showPicker('style')">Avatar</button>
-            {% if user.avatar_path or user.avatar_emoji or user.avatar_type == 'dicebear' %}
-            <form method="post" action="/reset_avatar" style="display:inline;">
-                <button class="btn-danger small-btn" type="submit">Reset</button>
-            </form>
-            {% endif %}
+        <div class="insta-info">
+            <div class="insta-top">
+                <h1>{{ user.username }}</h1>
+            <div class="profile-actions-row">
+        <a href="/followers" class="btn-secondary small-btn">👥 Followers</a>
+        <a href="/following" class="btn-secondary small-btn">👤 Following</a>
+        <a href="/blocked" class="btn-secondary small-btn">🚫 Blocked</a>
+        <a href="/post/new" class="btn-primary small-btn">📸 New Post</a>
+        <form method="post" action="/toggle_privacy" style="display:inline;">
+            <button type="submit" class="btn-secondary small-btn">
+                {% if user.is_private %}🔒 Private{% else %}🌍 Public{% endif %}
+            </button>
+        </form>
+    </div>
+
+    <div class="insta-stats">
+                <div class="insta-stat"><strong>{{ counts.item_count }}</strong><span>Items</span></div>
+                <div class="insta-stat"><strong>{{ counts.outfits }}</strong><span>Outfits</span></div>
+                <a href="/followers" class="insta-stat" style="text-decoration:none;">
+                    <strong>{{ followers_count }}</strong><span>Followers</span>
+                </a>
+                <a href="/following" class="insta-stat" style="text-decoration:none;">
+                    <strong>{{ following_count }}</strong><span>Following</span>
+                </a>
+            </div>
+
+            
+
+            {% if user.bio %}<p class="insta-bio">{{ user.bio }}</p>{% endif %}
+            {% if user.city %}<p class="muted" style="font-size:0.85rem;">📍 {{ user.city }}</p>{% endif %}
         </div>
     </div>
 
-    <!-- Upload Form -->
-    <div id="picker-upload" class="form-card" style="display:none; max-width: 500px; margin: 1rem auto;">
-        <h3>Upload your photo</h3>
-        <form method="post" action="/upload_avatar" enctype="multipart/form-data">
-            <label class="btn-primary small-btn" style="display:block; text-align:center;">
-                Choose file
-                <input type="file" name="avatar" accept="image/*" onchange="this.form.submit()" style="display:none;">
-            </label>
-        </form>
+    <!-- Tabs -->
+    <div class="insta-tabs">
+        <button class="insta-tab active" onclick="showTab('posts')">📸 Posts</button>
+        <button class="insta-tab" onclick="showTab('reposts')">🔁 Reposts</button>
+        <button class="insta-tab" onclick="showTab('outfits')">🎨 Outfits</button>
+        <button class="insta-tab" onclick="showTab('items')">👕 Wardrobe</button>
     </div>
 
-    <!-- Emoji Form -->
-    <div id="picker-emoji" class="form-card" style="display:none; max-width: 500px; margin: 1rem auto;">
-        <h3>Pick your emoji</h3>
-        <form method="post" action="/set_emoji_avatar" id="emoji-form">
-            <input type="hidden" name="emoji" id="selected-emoji">
-            <div class="emoji-picker">
-                {% for emoji in emoji_avatars %}
-                <button type="button" class="emoji-option" onclick="pickEmoji('{{ emoji }}', this)">{{ emoji }}</button>
-                {% endfor %}
-            </div>
-            <button class="btn-primary" type="submit" style="margin-top: 1rem; width: 100%;">Save emoji</button>
-        </form>
-    </div>
-
-    <!-- DiceBear Style Picker -->
-    <div id="picker-style" class="form-card" style="display:none; max-width: 700px; margin: 1rem auto;">
-        <h3>Choose avatar style</h3>
-        <p class="muted" style="margin-bottom: 1rem;">Each style creates a unique avatar just for you</p>
-        <form method="post" action="/set_avatar_style" id="style-form">
-            <input type="hidden" name="style" id="selected-style">
-            <div class="style-grid">
-                {% for s in style_previews %}
-                <div class="style-option" onclick="pickStyle('{{ s.id }}', this)">
-                    <img src="{{ s.url }}" alt="{{ s.name }}">
-                    <span>{{ s.name }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            <button class="btn-primary" type="submit" style="margin-top: 1rem; width: 100%;">Save style</button>
-        </form>
-    </div>
-
-    <script>
-    function showPicker(type) {
-        ['upload', 'emoji', 'style'].forEach(function(t) {
-            document.getElementById('picker-' + t).style.display = 'none';
-        });
-        var el = document.getElementById('picker-' + type);
-        if (el) el.style.display = 'block';
-        el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-    }
-
-    function pickEmoji(e, btn) {
-        document.getElementById('selected-emoji').value = e;
-        document.querySelectorAll('.emoji-option').forEach(function(b) {
-            b.style.borderColor = 'var(--paper-line)';
-            b.style.background = 'var(--card)';
-        });
-        btn.style.borderColor = 'var(--orange)';
-        btn.style.background = 'var(--orange-soft)';
-    }
-
-    function pickStyle(sid, el) {
-        document.getElementById('selected-style').value = sid;
-        document.querySelectorAll('.style-option').forEach(function(b) {
-            b.style.borderColor = 'var(--paper-line)';
-            b.style.background = 'var(--card)';
-        });
-        el.style.borderColor = 'var(--orange)';
-        el.style.background = 'var(--orange-soft)';
-    }
-    </script>
-
-    <h1 class="profile-name">{{ user.username }}</h1>
-    <p class="muted">{{ user.email }}</p>
-    {% if user.city or user.country %}
-        <p class="muted">{{ user.city }}{% if user.city and user.country %}, {% endif %}{{ user.country }}</p>
-    {% endif %}
-    {% if user.bio %}
-        <p class="profile-bio">{{ user.bio }}</p>
-    {% endif %}
-</div>
-
-<div class="stats">
-    <div class="stat"><span>{{ counts.item_count }}</span><small>Wardrobe</small></div>
-    <div class="stat"><span>{{ counts.wishlist }}</span><small>Wishlist</small></div>
-    <div class="stat"><span>{{ counts.outfits }}</span><small>Outfits</small></div>
-</div>
-
-{% if recent_items %}
-<section class="occasions">
-    <h2 class="cute-heading">{{ t("recent_items") }}</h2>
-    <div class="grid">
-        {% for item in recent_items %}
-        <div class="card">
-            {% if item.image_path %}
-                <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" class="clickable" onclick="openLightbox(this.src)">
+    <!-- Posts Grid -->
+    <div id="tab-posts" class="insta-grid">
+        {% for post in user_posts %}
+        <div class="insta-tile-wrap">
+        <a href="/p/{{ post.id }}" class="insta-tile">
+            {% if post.media_type == 'video' %}
+                <video src="{{ url_for('static', filename=post.media_path) }}" muted></video>
+                <span class="insta-video-icon">▶</span>
             {% else %}
-                <div class="placeholder">{{ item.name[0]|upper }}</div>
+                <img src="{{ url_for('static', filename=post.media_path) }}" alt="">
             {% endif %}
-            <h3>{{ item.name }}</h3>
-            <span class="tag">{{ item.occasion }}</span>
+        </a>
+        <form method="post" action="/post/delete/{{ post.id }}" onsubmit="return confirm('Delete this post?')" style="position:absolute; top:6px; right:6px; z-index:5;">
+            <button class="btn-delete-tile">🗑️</button>
+        </form>
         </div>
         {% endfor %}
     </div>
-</section>
-{% endif %}
-
-<section class="settings-section">
-    <h2 class="cute-heading">{{ t("edit_profile") }}</h2>
-    <div class="form-card">
-        <form method="post" action="/update_profile">
-            <label class="field-label">{{ t("username") }}</label>
-            <input name="username" value="{{ user.username }}" required>
-
-            <label class="field-label">{{ t("email") }}</label>
-            <input name="email" type="email" value="{{ user.email }}" required>
-
-            <label class="field-label">{{ t("city") }}</label>
-            <input name="city" value="{{ user.city or '' }}" placeholder="{{ t("city") }}">
-
-            <label class="field-label">{{ t("country") }}</label>
-            <input name="country" value="{{ user.country or '' }}" placeholder="{{ t("country") }}">
-
-            <label class="field-label">{{ t("bio") }}</label>
-            <textarea name="bio" maxlength="300" placeholder="Tell us about your style...">{{ user.bio or '' }}</textarea>
-
-            <button class="btn-primary" type="submit">{{ t("save_changes") }}</button>
-        </form>
+    {% if not user_posts %}
+    <div id="tab-posts-empty" class="insta-empty">
+        <p>No posts yet</p>
+        <a href="/post/new" class="btn-primary">Share your first post</a>
     </div>
-</section>
+    {% endif %}
 
-<section class="settings-section">
-    <h2 class="cute-heading">{{ t("settings") }}</h2>
-    <div class="form-card center">
-        <div class="settings-actions">
-            <a href="/export" class="btn-primary">{{ t("export_data") }}</a>
-            <a href="/forgot" class="btn-secondary">{{ t("change_password") }}</a>
-            <button class="btn-danger" onclick="confirmDelete()">{{ t("delete_account") }}</button>
+    <!-- Outfits Grid -->
+    <div id="tab-reposts" class="insta-grid" style="display:none;">
+        {% for p in my_reposts %}
+        <div class="insta-tile-wrap">
+            <a href="/p/{{ p.id }}" class="insta-tile">
+                {% if p.media_type == 'video' %}
+                    <video src="{{ url_for('static', filename=p.media_path) }}" muted></video>
+                    <span class="insta-video-icon">▶</span>
+                {% else %}
+                    <img src="{{ url_for('static', filename=p.media_path) }}" alt="">
+                {% endif %}
+                <span class="repost-icon">🔁 Reposted</span>
+            </a>
+            <form method="post" action="/repost/{{ p.id }}/remove" style="position:absolute; top:6px; right:6px; z-index:5;">
+                <button class="btn-delete-tile" title="Remove repost">❌</button>
+            </form>
         </div>
+        {% endfor %}
     </div>
-</section>
 
-<div class="form-card center" id="delete-box" style="display:none;">
-    <h3>{{ t("confirm_deletion") }}</h3>
-    <p class="muted">Type your username and password to confirm - this cannot be undone</p>
-    <form method="post" action="/delete_account">
-        <input name="confirm_username" placeholder="Type your username" required>
-        <input name="confirm_password" type="password" placeholder="Your password" required>
-        <button class="btn-danger" type="submit">{{ t("delete_forever") }}</button>
-    </form>
-    <button class="btn-secondary" onclick="document.getElementById('delete-box').style.display='none'">{{ t("cancel") }}</button>
+    <div id="tab-outfits" class="insta-grid" style="display:none;">
+        {% for o in recent_outfits %}
+        <div class="insta-tile text-tile">
+            <div class="tile-content">
+                <h3>{{ o.title }}</h3>
+                <span class="tag">{{ o.occasion }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Wardrobe Grid -->
+    <div id="tab-items" class="insta-grid" style="display:none;">
+        {% for item in recent_items %}
+        <div class="insta-tile">
+            {% if item.image_path %}
+                <img src="{{ url_for('static', filename=item.image_path) }}" alt="">
+            {% else %}
+                <div class="tile-placeholder">{{ item.name[0]|upper }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
 </div>
 
 <script>
-function confirmDelete() {
-    document.getElementById('delete-box').style.display = 'block';
-    document.getElementById('delete-box').scrollIntoView({behavior: 'smooth'});
+function showTab(name) {
+    ['posts', 'outfits', 'items', 'reposts'].forEach(function(t) {
+        var el = document.getElementById('tab-' + t);
+        if (el) el.style.display = 'none';
+    });
+    var target = document.getElementById('tab-' + name);
+    if (target) target.style.display = 'grid';
+    document.querySelectorAll('.insta-tab').forEach(function(b) {
+        b.classList.remove('active');
+    });
+    event.target.classList.add('active');
 }
 </script>
 

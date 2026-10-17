@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block main %}
+
+<a href="/profile" class="back-btn">← Back to Profile</a>
+
+<div class="page-head">
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ users|length }} user(s)</p>
+</div>
+
+{% if users %}
+<div class="people-list">
+    {% for u in users %}
+    <div class="person-row">
+        <a href="/u/{{ u.username }}" class="person-info">
+            {% if u.avatar_path %}
+                <img src="{{ url_for('static', filename=u.avatar_path) }}" class="person-row-avatar">
+            {% elif u.avatar_emoji %}
+                <div class="person-row-emoji">{{ u.avatar_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="person-row-avatar">
+            {% endif %}
+            <div class="person-row-info">
+                <strong>{{ u.username }}</strong>
+                {% if u.follows_back is defined %}
+                    <small class="muted">{% if u.follows_back %}Follows you back{% else %}Doesn't follow back{% endif %}</small>
+                {% endif %}
+            </div>
+        </a>
+        <div class="person-row-actions">
+            {% if title == "Following" %}
+                <form method="post" action="/unfollow/{{ u.id }}">
+                    <button class="btn-secondary small">Unfollow</button>
+                </form>
+            {% else %}
+                {% if not u.follows_back %}
+                <form method="post" action="/follow/{{ u.id }}">
+                    <button class="btn-primary small">Follow back</button>
+                </form>
+                {% else %}
+                <span class="tag">Follows back ✓</span>
+                {% endif %}
+            {% endif %}
+            <form method="post" action="/block/{{ u.id }}" onsubmit="return confirm('Block this user? They will no longer see your content.')">
+                <button class="btn-danger small">Block</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No users yet.</p>
+{% endif %}
+
+{% endblock %}

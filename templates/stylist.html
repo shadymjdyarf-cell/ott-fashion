@@ -1,10 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}{{ t("ai_stylist") }}<script>
-function copyOutfitLink(id) {
-    var url = window.location.origin + '/outfit/' + id;
-    navigator.clipboard.writeText(url).then(function() {
-        alert('Link copied! ✅\n\n' + url);
-    }).catch(function() {
+).catch(function() {
         alert('Copy this link: ' + url);
     });
 }
@@ -103,7 +99,14 @@ function copyOutfitLink(id) {
         {% for o in history %}
             <li>
                 <strong>{{ o.title }}</strong> - {{ o.created_at }}
-                <button class="btn-secondary small" style="margin-left: 0.5rem;" onclick="copyOutfitLink({{ o.id }})">🔗 Share</button>
+                <div style="display:inline-flex; gap:0.3rem; margin-left: 0.5rem; flex-wrap:wrap;">
+                    <button class="btn-secondary small" onclick="copyOutfitLink({{ o.id }})">🔗 Share</button>
+                    {% if o.is_public %}
+                        
+                    {% else %}
+                        
+                    {% endif %}
+                </div>
             </li>
         {% endfor %}
     </ul>

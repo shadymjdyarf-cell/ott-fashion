@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block main %}
+
+<a href="{{ back_url }}" class="back-btn">← Back</a>
+
+<div class="page-head">
+    <h1>{{ title }}</h1>
+</div>
+
+{% if users %}
+<div class="grid">
+    {% for u in users %}
+    <a href="/u/{{ u.username }}" class="card" style="text-decoration:none; text-align: center;">
+        {% if u.avatar_path %}
+            <img src="{{ url_for('static', filename=u.avatar_path) }}" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;object-fit:cover;">
+        {% elif u.avatar_emoji %}
+            <div style="font-size:3rem;">{{ u.avatar_emoji }}</div>
+        {% else %}
+            <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;">
+        {% endif %}
+        <h3>{{ u.username }}</h3>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No users yet.</p>
+{% endif %}
+
+{% endblock %}

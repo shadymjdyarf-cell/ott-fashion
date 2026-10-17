@@ -192,7 +192,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-// ============ POWERFUL AUTO-TRANSLATOR ============
+
+
+// ============ POWERFUL AUTO-TRANSLATOR v2 ============
 (function() {
     var lang = window.OTT_LANG;
     if (!lang || lang === 'en') return;
@@ -200,54 +202,88 @@ document.addEventListener('DOMContentLoaded', function() {
     var keys = Object.keys(T);
     if (!keys.length) return;
 
-    // Build pattern - longest first to avoid partial conflicts
+    // Sort by length (longest first)
     keys.sort(function(a, b) { return b.length - a.length; });
-    var esc = function(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
-    var pattern = new RegExp(keys.map(esc).join('|'), 'g');
 
-    function tr(text) {
-        if (!text || typeof text !== 'string') return text;
-        return text.replace(pattern, function(m) { return T[m] || m; });
+    function escapeRegex(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    function walk(node) {
+    // Build word-boundary regex for better matching
+    var patterns = keys.map(function(k) {
+        return escapeRegex(k);
+    });
+    var regex = new RegExp('(' + patterns.join('|') + ')', 'g');
+
+    function translate(text) {
+        if (!text || typeof text !== 'string') return text;
+        try {
+            return text.replace(regex, function(m) {
+                return T[m] || m;
+            });
+        } catch (e) {
+            return text;
+        }
+    }
+
+    function processNode(node) {
         if (!node) return;
+
         // Text node
         if (node.nodeType === 3) {
-            var orig = node.nodeValue;
-            var t = tr(orig);
-            if (t !== orig) node.nodeValue = t;
+            var original = node.nodeValue;
+            var translated = translate(original);
+            if (translated !== original) {
+                node.nodeValue = translated;
+            }
             return;
         }
+
         // Element node
         if (node.nodeType === 1) {
             var tag = node.tagName;
-            if (tag === 'SCRIPT' || tag === 'STYLE') return;
-            // Attributes
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return;
+
+            // Translate attributes
             var attrs = ['placeholder', 'title', 'aria-label', 'alt'];
-            for (var a = 0; a < attrs.length; a++) {
-                var v = node.getAttribute && node.getAttribute(attrs[a]);
-                if (v) {
-                    var tv = tr(v);
-                    if (tv !== v) node.setAttribute(attrs[a], tv);
+            for (var i = 0; i < attrs.length; i++) {
+                var val = node.getAttribute && node.getAttribute(attrs[i]);
+                if (val) {
+                    var tv = translate(val);
+                    if (tv !== val) {
+                        node.setAttribute(attrs[i], tv);
+                    }
                 }
             }
-            for (var i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]);
+
+            // Process children
+            for (var j = 0; j < node.childNodes.length; j++) {
+                processNode(node.childNodes[j]);
+            }
         }
     }
 
     function run() {
-        walk(document.body);
+        if (!document.body) return;
+        processNode(document.body);
+
         // Watch for dynamic content
         try {
-            var obs = new MutationObserver(function(muts) {
-                for (var i = 0; i < muts.length; i++) {
-                    var added = muts[i].addedNodes;
-                    for (var j = 0; j < added.length; j++) walk(added[j]);
+            var observer = new MutationObserver(function(mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                    var added = mutations[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        processNode(added[j]);
+                    }
                 }
             });
-            obs.observe(document.body, { childList: true, subtree: true });
-        } catch (e) {}
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        } catch (e) {
+            // MutationObserver not supported
+        }
     }
 
     if (document.readyState === 'loading') {
@@ -255,205 +291,139 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         run();
     }
+
+    // Run again after a small delay to catch rendered content
+    setTimeout(run, 300);
+    setTimeout(run, 800);
 })();
 
-// ============ KEYBOARD SHORTCUTS + SEARCH ============
+// ============ NOTIFICATIONS BADGE ============
 (function() {
-    // Add search overlay to page
-    var overlay = document.createElement('div');
-    overlay.className = 'search-overlay';
-    overlay.id = 'search-overlay';
-    overlay.innerHTML = '<div class="search-box" onclick="event.stopPropagation()">' +
-        '<input type="text" id="global-search" placeholder="Search or jump to..." autocomplete="off">' +
-        '<div class="search-links">' +
-        '<a href="/wardrobe">Wardrobe</a>' +
-        '<a href="/wishlist">Wishlist</a>' +
-        '<a href="/trends">Trends</a>' +
-        '<a href="/stylist">Stylist</a>' +
-        '<a href="/discover">Discover</a>' +
-        '<a href="/camera">Camera</a>' +
-        '<a href="/profile">Profile</a>' +
-        '</div></div>';
-    document.body.appendChild(overlay);
-
-    // Add hint
-    var hint = document.createElement('div');
-    hint.className = 'kbd-hint';
-    hint.innerHTML = '<kbd>Ctrl</kbd> + <kbd>K</kbd> to search';
-    document.body.appendChild(hint);
-    setTimeout(function() { hint.style.opacity = '0'; hint.style.transition = 'opacity 0.5s'; }, 6000);
-
-    // Open search
-    function openSearch() {
-        overlay.classList.add('active');
-        setTimeout(function() { document.getElementById('global-search').focus(); }, 50);
-        hint.style.display = 'none';
-    }
-    function closeSearch() {
-        overlay.classList.remove('active');
+    function checkNotifications() {
+        var badge = document.getElementById('notif-badge');
+        if (!badge) return;
+        fetch('/notifications/count')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.count && data.count > 0) {
+                    badge.textContent = data.count > 9 ? '9+' : data.count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function() {});
     }
 
-    overlay.addEventListener('click', closeSearch);
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Ctrl+K or Cmd+K
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-            e.preventDefault();
-            openSearch();
-        }
-        // Escape
-        if (e.key === 'Escape') closeSearch();
-        // Quick nav (Alt+key)
-        if (e.altKey) {
-            var routes = {
-                'w': '/wardrobe', 'i': '/wishlist', 't': '/trends',
-                's': '/stylist', 'd': '/discover', 'h': '/',
-                'p': '/profile', 'c': '/camera'
-            };
-            var key = e.key.toLowerCase();
-            if (routes[key]) {
-                e.preventDefault();
-                window.location.href = routes[key];
-            }
-        }
-    });
-
-    // Search navigation on Enter
-    document.getElementById('global-search').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            var q = this.value.trim();
-            if (q) {
-                window.location.href = '/search?q=' + encodeURIComponent(q);
-            }
-        }
-    });
-})();
-
-// ============ LOADING SKELETON ============
-(function() {
-    // Show skeleton in masonry containers while loading
-    var containers = ['home-masonry', 'trend-masonry', 'masonry'];
-    containers.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        // If empty, show skeletons
-        if (el.children.length === 0) {
-            for (var i = 0; i < 8; i++) {
-                var sk = document.createElement('div');
-                sk.className = 'skeleton skeleton-card';
-                sk.style.height = (200 + Math.random() * 150) + 'px';
-                el.appendChild(sk);
-            }
-        }
-    });
-})();
-
-// ============ FONT SIZE CONTROL ============
-(function() {
-    var saved = localStorage.getItem('ott-font-size');
-    if (saved === 'large') document.body.classList.add('font-large');
-    if (saved === 'xl') document.body.classList.add('font-xl');
-})();
-
-function setFontSize(size) {
-    document.body.classList.remove('font-large', 'font-xl');
-    if (size === 'large') document.body.classList.add('font-large');
-    if (size === 'xl') document.body.classList.add('font-xl');
-    localStorage.setItem('ott-font-size', size);
-}
-
-// ============ COLOR THEMES ============
-(function() {
-    var theme = localStorage.getItem('ott-theme');
-    if (theme && theme !== 'default') {
-        document.body.setAttribute('data-theme', theme);
-    }
-})();
-
-function setColorTheme(theme) {
-    if (theme === 'default') {
-        document.body.removeAttribute('data-theme');
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkNotifications);
     } else {
-        document.body.setAttribute('data-theme', theme);
+        checkNotifications();
     }
-    localStorage.setItem('ott-theme', theme);
+
+    // Refresh every 30 seconds
+    setInterval(checkNotifications, 30000);
+})();
+
+// ============ ACCORDION SIDEBAR ============
+function toggleGroup(btn) {
+    var group = btn.parentElement;
+    group.classList.toggle('open');
+    // Save state
+    var title = btn.querySelector('span').textContent.trim();
+    var openGroups = JSON.parse(localStorage.getItem('ott-open-groups') || '[]');
+    if (group.classList.contains('open')) {
+        if (openGroups.indexOf(title) === -1) openGroups.push(title);
+    } else {
+        openGroups = openGroups.filter(function(t) { return t !== title; });
+    }
+    localStorage.setItem('ott-open-groups', JSON.stringify(openGroups));
 }
 
-
-
-// ============ VOICE SEARCH (Fixed) ============
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        var searchInput = document.getElementById('global-search');
-        if (!searchInput) {
-            console.log('Voice: search input not found');
-            return;
+// Restore open state on load
+(function() {
+    var openGroups = JSON.parse(localStorage.getItem('ott-open-groups') || '["🏠 Main"]');
+    document.querySelectorAll('.nav-group').forEach(function(g) {
+        var title = g.querySelector('.nav-group-title span').textContent.trim();
+        if (openGroups.indexOf(title) !== -1) {
+            g.classList.add('open');
         }
-        if (searchInput.parentElement.querySelector('.mic-btn')) {
-            return; // Already added
+    });
+})();
+
+// ============ ACCORDION SIDEBAR ============
+function toggleGroup(btn) {
+    var group = btn.parentElement;
+    group.classList.toggle('open');
+    // Save state
+    var title = btn.querySelector('span').textContent.trim();
+    var openGroups = JSON.parse(localStorage.getItem('ott-open-groups') || '[]');
+    if (group.classList.contains('open')) {
+        if (openGroups.indexOf(title) === -1) openGroups.push(title);
+    } else {
+        openGroups = openGroups.filter(function(t) { return t !== title; });
+    }
+    localStorage.setItem('ott-open-groups', JSON.stringify(openGroups));
+}
+
+// Restore open state on load
+(function() {
+    var openGroups = JSON.parse(localStorage.getItem('ott-open-groups') || '["🏠 Main"]');
+    document.querySelectorAll('.nav-group').forEach(function(g) {
+        var title = g.querySelector('.nav-group-title span').textContent.trim();
+        if (openGroups.indexOf(title) !== -1) {
+            g.classList.add('open');
         }
+    });
+})();
 
-        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-            console.log('Voice: browser does not support');
-            return;
-        }
-
-        var mic = document.createElement('button');
-        mic.type = 'button';
-        mic.innerHTML = '🎤';
-        mic.className = 'mic-btn';
-        mic.title = 'Voice search';
-
-        var wrapper = searchInput.parentElement;
-        wrapper.style.position = 'relative';
-        searchInput.style.paddingRight = '60px';
-        wrapper.appendChild(mic);
-
-        var recognition = null;
-        var listening = false;
-
-        function startListening() {
-            recognition = new SR();
-            recognition.lang = 'en-US';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-
-            recognition.onstart = function() {
-                listening = true;
-                mic.innerHTML = '⏺';
-                mic.classList.add('listening');
-            };
-            recognition.onresult = function(event) {
-                var text = event.results[0][0].transcript;
-                searchInput.value = text;
-                setTimeout(function() {
-                    window.location.href = '/search?q=' + encodeURIComponent(text);
-                }, 400);
-            };
-            recognition.onerror = function(e) {
-                console.log('Voice error:', e.error);
-                listening = false;
-                mic.innerHTML = '🎤';
-                mic.classList.remove('listening');
-            };
-            recognition.onend = function() {
-                listening = false;
-                mic.innerHTML = '🎤';
-                mic.classList.remove('listening');
-            };
-            recognition.start();
-        }
-
-        mic.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (listening && recognition) {
-                recognition.stop();
-            } else {
-                startListening();
-            }
+// ============ MOBILE SWIPE TO DELETE ============
+(function() {
+    function initSwipe() {
+        document.querySelectorAll('.card').forEach(function(card) {
+            if (card.dataset.swipeInit) return;
+            card.dataset.swipeInit = '1';
+            card.classList.add('swipe-item');
+            
+            var startX = 0;
+            var currentX = 0;
+            var isDragging = false;
+            
+            card.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                isDragging = true;
+                card.classList.add('swiping');
+            }, { passive: true });
+            
+            card.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                currentX = e.touches[0].clientX - startX;
+                if (currentX < 0) {
+                    card.style.transform = 'translateX(' + Math.max(currentX, -80) + 'px)';
+                }
+            }, { passive: true });
+            
+            card.addEventListener('touchend', function() {
+                isDragging = false;
+                card.classList.remove('swiping');
+                if (currentX < -60) {
+                    card.style.transform = 'translateX(-100px)';
+                    card.style.opacity = '0.5';
+                    setTimeout(function() {
+                        card.style.transform = '';
+                        card.style.opacity = '';
+                    }, 500);
+                } else {
+                    card.style.transform = '';
+                }
+                currentX = 0;
+            });
         });
-    }, 500);
-});
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSwipe);
+    } else {
+        initSwipe();
+    }
+})();

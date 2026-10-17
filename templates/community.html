@@ -2,47 +2,191 @@
 {% block title %}Community{% endblock %}
 {% block main %}
 
-<div class="page-head">
-    <h1>Community 🎨</h1>
-    <p class="muted">Explore outfits from the OTT community</p>
+<div class="insta-community">
+    <div class="page-head">
+        <h1>Community 🎨</h1>
+    </div>
+
+    <!-- Stories -->
+    <div class="stories-row">
+        <a href="/story/new" class="story-bubble">
+            <div class="story-ring add-ring"><div class="story-add-icon">+</div></div>
+            <span class="person-name">Your Story</span>
+        </a>
+        {% for su in story_users %}
+        <div class="story-bubble" onclick='openStoryUser({{ su.user_id }}, {{ su.stories | tojson }})'>
+            <div class="story-ring">
+                {% if su.avatar_path %}<img src="{{ url_for('static', filename=su.avatar_path) }}">
+                {% elif su.avatar_emoji %}<div class="story-ring-emoji">{{ su.avatar_emoji }}</div>
+                {% else %}<img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ su.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449">
+                {% endif %}
+            </div>
+            <span class="person-name">{{ su.username[:10] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Feed -->
+    {% if posts %}
+    <div class="feed">
+        {% for p in posts %}
+        <div class="feed-card">
+            <div class="feed-header">
+                <a href="/u/{{ p.username }}" class="feed-user">
+                    {% if p.avatar_path %}<img src="{{ url_for('static', filename=p.avatar_path) }}" class="feed-avatar">
+                    {% elif p.avatar_emoji %}<div class="feed-avatar-emoji">{{ p.avatar_emoji }}</div>
+                    {% else %}<img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ p.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="feed-avatar">
+                    {% endif %}
+                    <div><strong>{{ p.username }}</strong></div>
+                </a>
+            </div>
+
+            <a href="/p/{{ p.id }}" class="feed-media-link">
+                {% if p.media_type == 'video' %}<video src="{{ url_for('static', filename=p.media_path) }}" muted></video>
+                {% else %}<img src="{{ url_for('static', filename=p.media_path) }}" alt="">
+                {% endif %}
+            </a>
+
+            {% if p.note %}<div class="feed-caption"><strong>{{ p.username }}</strong> {{ p.note }}</div>{% endif %}
+
+            <!-- الأزرار -->
+            <div class="feed-actions-bar" style="display:flex; justify-content:space-around; padding:10px; border-top:1px solid #3a3a55; border-bottom:1px solid #3a3a55;">
+                <!-- زرار التفاعل -->
+                <div style="position:relative;">
+                    <button type="button" onclick="toggleReactMenu({{ p.id }})" style="background:none; border:none; color:#E67E22; cursor:pointer; font-weight:bold;">❤️ React <span id="react-count-{{ p.id }}"></span></button>
+                    <!-- قايمة التفاعل -->
+                    <div id="react-menu-{{ p.id }}" style="display:none; position:absolute; bottom:100%; left:0; background:#2C3E50; padding:10px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:100;">
+                        <button type="button" onclick="sendReaction({{ p.id }}, '❤️')" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">❤️</button>
+                        <button type="button" onclick="sendReaction({{ p.id }}, '😂')" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">😂</button>
+                        <button type="button" onclick="sendReaction({{ p.id }}, '😮')" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">😮</button>
+                        <button type="button" onclick="sendReaction({{ p.id }}, '😢')" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">😢</button>
+                        <button type="button" onclick="sendReaction({{ p.id }}, '🔥')" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">🔥</button>
+                    </div>
+                </div>
+
+                <!-- زرار الريبوست -->
+                <button type="button" onclick="sendRepost({{ p.id }}, this)" style="background:none; border:none; color:#fff; cursor:pointer;">🔁 Repost</button>
+
+                <!-- زرار التعليق -->
+                <button type="button" onclick="toggleCommentBox({{ p.id }})" style="background:none; border:none; color:#fff; cursor:pointer;">💬 Comment</button>
+                
+                <!-- زرار الشير -->
+                <a href="https://wa.me/?text={{ request.host_url }}p/{{ p.id }}" target="_blank" style="color:#fff; text-decoration:none;">📤 Share</a>
+            </div>
+
+            <!-- التعليقات -->
+            
+            <div id="comment-box-{{ p.id }}" style="display:none; padding:10px; background:#1f1f35; border-radius:8px; margin-top:5px;">
+                <div id="comment-list-{{ p.id }}" style="margin-bottom:10px; font-size:0.9rem; color:#ddd;"></div>
+                <form method="POST" action="/post/{{ p.id }}/comment" style="display:flex; gap:5px;">
+                    <input type="text" name="text" placeholder="Write a comment..." required style="flex:1; padding:8px; border-radius:5px; border:none;">
+                    <button type="submit" class="btn-primary" style="padding:8px 15px;">Post</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="empty">Nothing shared yet. 🎨</p>
+    {% endif %}
 </div>
 
-{% if suggested %}
-<section class="occasions">
-    <h2 class="cute-heading">Discover people</h2>
-    <div class="grid">
-        {% for u in suggested %}
-        <a href="/u/{{ u.username }}" class="card" style="text-decoration:none; text-align: center;">
-            {% if u.avatar_path %}
-                <img src="{{ url_for('static', filename=u.avatar_path) }}" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;">
-            {% elif u.avatar_emoji %}
-                <div style="font-size:3rem;">{{ u.avatar_emoji }}</div>
-            {% else %}
-                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" alt="{{ u.username }}" style="width:70px;height:70px;border-radius:50%;margin:0 auto 0.5rem;">
-            {% endif %}
-            <h3>{{ u.username }}</h3>
-        </a>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
+<!-- Story Viewer -->
+<div id="story-viewer" class="story-viewer" onclick="closeStoryViewer()">
+    <span class="story-close">&times;</span>
+    <div class="story-progress-bar"><div class="story-progress-fill" id="story-progress"></div></div>
+    <div class="story-user-header" id="story-user-header"></div>
+    <div id="story-content" onclick="event.stopPropagation()"></div>
+</div>
 
-{% if outfits %}
-<section class="occasions">
-    <h2 class="cute-heading">Top outfits</h2>
-    <div class="grid">
-        {% for o in outfits %}
-        <a href="/o/{{ o.id }}" class="card" style="text-decoration:none;">
-            <h3>{{ o.title }}</h3>
-            <p class="muted">by <strong>{{ o.username }}</strong></p>
-            <span class="tag">{{ o.occasion }}</span>
-            <p class="muted">❤️ {{ o.likes }} · 💬 {{ o.comments }}</p>
-        </a>
-        {% endfor %}
-    </div>
-</section>
-{% else %}
-<p class="empty">No outfits shared yet. Be the first! 🎨</p>
-{% endif %}
+
+<script>
+// --- قايمة التفاعل ---
+function toggleReactMenu(postId) {
+    var menu = document.getElementById('react-menu-' + postId);
+    // نقفل أي قايمة تانية مفتوحة
+    document.querySelectorAll('[id^="react-menu-"]').forEach(m => m.style.display = 'none');
+    
+    if (menu.style.display === 'none' || menu.style.display === '') {
+        menu.style.display = 'block';
+    } else {
+        menu.style.display = 'none';
+    }
+}
+
+// --- إرسال التفاعل في الخلفية ---
+function sendReaction(postId, emoji) {
+    var fd = new FormData();
+    fd.append('emoji', emoji);
+    
+    fetch('/post/' + postId + '/react', { method: 'POST', body: fd })
+        .then(() => {
+            document.getElementById('react-menu-' + postId).style.display = 'none';
+            updateReactions(postId);
+        });
+}
+
+// --- تحديث عدد التفاعلات ---
+function updateReactions(postId) {
+    fetch('/post/' + postId + '/reactions')
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                var countSpan = document.getElementById('react-count-' + postId);
+                if (countSpan) {
+                    let total = 0;
+                    for (let k in data.counts) { total += data.counts[k]; }
+                    countSpan.innerText = total > 0 ? '(' + total + ')' : '';
+                }
+            }
+        });
+}
+
+// --- إرسال الريبوست في الخلفية ---
+function sendRepost(postId, btn) {
+    fetch('/post/' + postId + '/repost', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                btn.innerText = data.action === 'reposted' ? '🔁 Reposted' : '🔁 Repost';
+                btn.style.color = data.action === 'reposted' ? '#E67E22' : '#fff';
+            }
+        });
+}
+
+// --- التعليقات (زي ما هي) ---
+function toggleCommentBox(postId) {
+    var box = document.getElementById('comment-box-' + postId);
+    if (box.style.display === 'none' || box.style.display === '') {
+        box.style.display = 'block';
+        loadComments(postId);
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+function loadComments(postId) {
+    var list = document.getElementById('comment-list-' + postId);
+    list.innerHTML = 'Loading...';
+    fetch('/post/' + postId + '/comments')
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok && data.comments.length > 0) {
+                list.innerHTML = data.comments.map(c => '<div style="margin-bottom:5px; border-bottom:1px solid #333;"><strong style="color:#fff;">' + c.username + ':</strong> ' + c.text + '</div>').join('');
+            } else {
+                list.innerHTML = 'No comments yet.';
+            }
+        });
+}
+
+// تحميل التفاعلات أول ما الصفحة تفتح
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.feed-card').forEach(card => {
+        var postId = card.getAttribute('data-post-id');
+        if (postId) updateReactions(postId);
+    });
+});
+</script>
+
 
 {% endblock %}

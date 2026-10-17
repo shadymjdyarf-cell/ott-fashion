@@ -108,6 +108,31 @@
 </script>
 {% endif %}
 
+{% if recent_outfits %}
+<section class="occasions">
+    <h2 class="cute-heading">My Recent Outfits</h2>
+    <div class="grid">
+        {% for o in recent_outfits %}
+        <div class="card">
+            <h3>{{ o.title }}</h3>
+            <span class="tag">{{ o.occasion }}</span>
+            {% if o.is_public %}
+                <p style="color: var(--green); font-size: 0.85rem;">✅ Published</p>
+                <form method="post" action="/unpublish_outfit/{{ o.id }}">
+                    <button class="btn-danger small">Unpublish</button>
+                </form>
+            {% else %}
+                <form method="post" action="/publish_outfit/{{ o.id }}">
+                    <button class="btn-primary small">📤 Publish to Community</button>
+                </form>
+            {% endif %}
+            <button class="btn-secondary small" style="margin-top: 0.3rem;" onclick="copyOutfitLink({{ o.id }})">🔗 Share</button>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 {% if viral_items %}
 <section class="trending-now">
     <h2 class="cute-heading">{{ t("trending_now") }}</h2>

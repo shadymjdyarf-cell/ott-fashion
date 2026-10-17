@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Notifications{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Notifications 🔔</h1>
+    {% if notifications %}
+    <form method="post" action="/notifications/clear" style="display:inline;">
+        <button class="btn-danger small" type="submit">Clear all</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if notifications %}
+<div class="notif-list">
+    {% for n in notifications %}
+    <a href="{{ n.link }}" class="notif-item {% if not n.is_read %}unread{% endif %}">
+        <div class="notif-avatar">
+            {% if n.actor_avatar %}
+                <img src="{{ url_for('static', filename=n.actor_avatar) }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+            {% elif n.actor_emoji %}
+                <div style="font-size:2rem;">{{ n.actor_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ n.actor_name }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" style="width:44px;height:44px;border-radius:50%;">
+            {% endif %}
+        </div>
+        <div class="notif-body">
+            <p><strong>{{ n.actor_name or 'Someone' }}</strong> {{ n.message }}</p>
+            <small class="muted">{{ n.created_at }}</small>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No notifications yet.</p>
+{% endif %}
+
+{% endblock %}

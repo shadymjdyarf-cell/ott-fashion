@@ -1,3 +1,9 @@
+"""
+Helper functions for OTT.
+AI (Claude) was used as a debugging assistant.
+All core logic and algorithms are mine.
+"""
+
 from functools import wraps
 from flask import redirect, session, render_template
 

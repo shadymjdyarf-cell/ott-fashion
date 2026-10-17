@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block title %}Find People{% endblock %}
+{% block main %}
+
+<div class="page-head">
+    <h1>Find People 👥</h1>
+    <p class="muted">Search for users to follow</p>
+</div>
+
+<form method="get" class="search" style="margin-bottom: 1.5rem;">
+    <input name="q" value="{{ q }}" placeholder="Search by username..." autofocus>
+    <button class="btn-primary" type="submit">🔍 Search</button>
+</form>
+
+{% if users %}
+<div class="people-list">
+    {% for u in users %}
+    <div class="person-row">
+        <a href="/u/{{ u.username }}" class="person-info">
+            {% if u.avatar_path %}
+                <img src="{{ url_for('static', filename=u.avatar_path) }}" class="person-row-avatar">
+            {% elif u.avatar_emoji %}
+                <div class="person-row-emoji">{{ u.avatar_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="person-row-avatar">
+            {% endif %}
+            <div class="person-row-info">
+                <strong>{{ u.username }}</strong>
+                {% if u.city %}<small class="muted">📍 {{ u.city }}</small>{% endif %}
+            </div>
+        </a>
+        <div class="person-row-actions">
+            {% if u.is_following %}
+            <form method="post" action="/unfollow/{{ u.id }}">
+                <button class="btn-secondary small">Following ✓</button>
+            </form>
+            {% else %}
+            <form method="post" action="/follow/{{ u.id }}">
+                <button class="btn-primary small">Follow</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No users found for "{{ q }}"</p>
+{% endif %}
+
+{% endblock %}

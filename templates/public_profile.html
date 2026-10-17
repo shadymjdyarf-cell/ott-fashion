@@ -2,59 +2,109 @@
 {% block title %}{{ profile_user.username }}{% endblock %}
 {% block main %}
 
-<div class="profile-header">
-    <div class="avatar-section">
-        <div class="avatar-wrapper">
-            {% if profile_user.avatar_path %}
-                <img class="avatar-img" src="{{ url_for('static', filename=profile_user.avatar_path) }}" alt="{{ profile_user.username }}">
-            {% elif profile_user.avatar_emoji %}
-                <div class="avatar-emoji">{{ profile_user.avatar_emoji }}</div>
-            {% else %}
-                <img class="avatar-img" src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ profile_user.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" alt="{{ profile_user.username }}">
-            {% endif %}
-        </div>
+<div class="public-profile-header">
+    <div class="avatar-wrapper">
+        {% if profile_user.avatar_path %}
+            <img src="{{ url_for('static', filename=profile_user.avatar_path) }}" class="public-profile-avatar">
+        {% elif profile_user.avatar_emoji %}
+            <div class="public-profile-emoji">{{ profile_user.avatar_emoji }}</div>
+        {% else %}
+            <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ profile_user.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="public-profile-avatar">
+        {% endif %}
+        {% if has_active_story %}
+            <span class="add-story-btn" style="background: var(--green);" title="Has story">📸</span>
+        {% endif %}
     </div>
-    <h1 class="profile-name">{{ profile_user.username }}</h1>
+
+    <h1 class="public-profile-name">{{ profile_user.username }}</h1>
     {% if profile_user.city or profile_user.country %}
-        <p class="muted">{{ profile_user.city }}{% if profile_user.city and profile_user.country %}, {% endif %}{{ profile_user.country }}</p>
+        <p class="muted">📍 {{ profile_user.city }}{% if profile_user.city and profile_user.country %}, {% endif %}{{ profile_user.country }}</p>
     {% endif %}
     <p class="muted">🔥 {{ profile_user.streak or 1 }} day streak</p>
 
-    {% if current_uid and current_uid != profile_user.id %}
+    {% if current_uid and not is_own_profile %}
+    <div style="margin-top: 1rem; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
         {% if is_following %}
-        <form method="post" action="/unfollow/{{ profile_user.id }}" style="margin-top: 1rem;">
+        <form method="post" action="/unfollow/{{ profile_user.id }}">
             <button class="btn-secondary" type="submit">Following ✓</button>
         </form>
         {% else %}
-        <form method="post" action="/follow/{{ profile_user.id }}" style="margin-top: 1rem;">
-            <button class="btn-primary" type="submit">Follow</button>
+        <form method="post" action="/follow/{{ profile_user.id }}">
+            <button class="btn-primary" type="submit">+ Follow</button>
         </form>
         {% endif %}
+        <form method="post" action="/block/{{ profile_user.id }}" onsubmit="return confirm('Block this user?')">
+            <button class="btn-danger" type="submit">🚫 Block</button>
+        </form>
+    </div>
     {% endif %}
 </div>
 
-<div class="stats">
-    <div class="stat"><span>{{ stats.items }}</span><small>Items</small></div>
-    <div class="stat"><span>{{ stats.outfits }}</span><small>Outfits</small></div>
-    <div class="stat"><span>{{ stats.followers }}</span><small>Followers</small></div>
-    <div class="stat"><span>{{ stats.following }}</span><small>Following</small></div>
+<div class="stats" style="margin-top: 1rem;">
+    <a href="/u/{{ profile_user.username }}/followers" class="stat" style="text-decoration:none;">
+        <span>{{ stats.followers }}</span><small>Followers</small>
+    </a>
+    <a href="/u/{{ profile_user.username }}/following" class="stat" style="text-decoration:none;">
+        <span>{{ stats.following }}</span><small>Following</small>
+    </a>
 </div>
 
-{% if outfits %}
-<section class="occasions">
-    <h2 class="cute-heading">Outfits</h2>
-    <div class="grid">
-        {% for o in outfits %}
-        <a href="/o/{{ o.id }}" class="card" style="text-decoration:none;">
-            <h3>{{ o.title }}</h3>
-            <span class="tag">{{ o.occasion }}</span>
-            <p class="muted">❤️ {{ o.likes }} · 💬 {{ o.comments }}</p>
-        </a>
-        {% endfor %}
-    </div>
-</section>
-{% else %}
-<p class="empty">No outfits shared yet.</p>
+<!-- Tabs -->
+<div class="insta-tabs">
+    <button class="insta-tab active" onclick="showTab('posts')">📸 Posts</button>
+    <button class="insta-tab" onclick="showTab('reposts')">🔁 Reposts</button>
+</div>
+
+<!-- Posts Grid -->
+<div id="tab-posts" class="insta-grid">
+    {% for p in posts %}
+    <a href="/p/{{ p.id }}" class="insta-tile">
+        {% if p.media_type == 'video' %}
+            <video src="{{ url_for('static', filename=p.media_path) }}" muted></video>
+            <span class="insta-video-icon">▶</span>
+        {% else %}
+            <img src="{{ url_for('static', filename=p.media_path) }}" alt="">
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% if not posts %}
+<div id="tab-posts-empty" class="insta-empty">
+    <p>No posts yet.</p>
+</div>
 {% endif %}
+
+<!-- Reposts Grid -->
+<div id="tab-reposts" class="insta-grid" style="display:none;">
+    {% for p in reposts %}
+    <a href="/p/{{ p.id }}" class="insta-tile">
+        {% if p.media_type == 'video' %}
+            <video src="{{ url_for('static', filename=p.media_path) }}" muted></video>
+            <span class="insta-video-icon">▶</span>
+        {% else %}
+            <img src="{{ url_for('static', filename=p.media_path) }}" alt="">
+        {% endif %}
+        <span class="repost-icon">🔁 Reposted</span>
+    </a>
+    {% endfor %}
+</div>
+{% if not reposts %}
+<div id="tab-reposts-empty" class="insta-empty" style="display:none;">
+    <p>No reposts yet.</p>
+</div>
+{% endif %}
+
+<script>
+function showTab(name) {
+    ['posts', 'reposts'].forEach(function(t) {
+        var el = document.getElementById('tab-' + t);
+        if (el) el.style.display = 'none';
+    });
+    var target = document.getElementById('tab-' + name);
+    if (target) target.style.display = 'grid';
+    document.querySelectorAll('.insta-tab').forEach(function(b) { b.classList.remove('active'); });
+    event.target.classList.add('active');
+}
+</script>
 
 {% endblock %}

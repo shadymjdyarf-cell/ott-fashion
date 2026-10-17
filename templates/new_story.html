@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}New Story{% endblock %}
+{% block main %}
+
+<a href="/community" class="back-btn">← Back</a>
+
+<div class="page-head">
+    <h1>New Story 📸</h1>
+    <p class="muted">Your story will disappear after the time you choose</p>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form-card">
+    <label class="field-label">Upload image or video</label>
+    <input type="file" name="media" accept="image/*,video/*" required>
+
+    <label class="field-label">Note (optional, max 200)</label>
+    <input type="text" name="note" maxlength="200" placeholder="Say something...">
+
+    <label class="field-label">Duration — choose how long it stays</label>
+    <select name="duration" required>
+        <option value="1">1 hour</option>
+        <option value="6">6 hours</option>
+        <option value="12">12 hours</option>
+        <option value="24" selected>24 hours (1 day)</option>
+        <option value="48">48 hours (2 days)</option>
+        <option value="168">1 week</option>
+    </select>
+
+    <button class="btn-primary" type="submit">Post Story</button>
+</form>
+
+{% endblock %}

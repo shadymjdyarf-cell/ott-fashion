@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}Blocked Users{% endblock %}
+{% block main %}
+
+<a href="/profile" class="back-btn">← Back to Profile</a>
+
+<div class="page-head">
+    <h1>Blocked Users 🚫</h1>
+    <p class="muted">Users you have blocked. They cannot see your content or follow you.</p>
+</div>
+
+{% if users %}
+<div class="people-list">
+    {% for u in users %}
+    <div class="person-row">
+        <div class="person-info">
+            {% if u.avatar_path %}
+                <img src="{{ url_for('static', filename=u.avatar_path) }}" class="person-row-avatar">
+            {% elif u.avatar_emoji %}
+                <div class="person-row-emoji">{{ u.avatar_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ u.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="person-row-avatar">
+            {% endif %}
+            <div class="person-row-info">
+                <strong>{{ u.username }}</strong>
+                <small class="muted">Blocked</small>
+            </div>
+        </div>
+        <div class="person-row-actions">
+            <form method="post" action="/unblock/{{ u.id }}">
+                <button class="btn-secondary small">Unblock</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">You haven't blocked anyone. 🙌</p>
+{% endif %}
+
+{% endblock %}

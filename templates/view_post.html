@@ -1,0 +1,229 @@
+{% extends "layout.html" %}
+{% block title %}Post{% endblock %}
+{% block main %}
+
+<a href="/community" class="back-btn">← Back</a>
+
+<div class="post-page">
+    <div class="post-card">
+
+        <!-- Header -->
+        <div class="post-header">
+            {% if post.author.avatar_path %}
+                <img src="{{ url_for('static', filename=post.author.avatar_path) }}" class="post-avatar">
+            {% elif post.author.avatar_emoji %}
+                <div class="post-avatar-emoji">{{ post.author.avatar_emoji }}</div>
+            {% else %}
+                <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ post.author.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="post-avatar">
+            {% endif %}
+            <div class="post-author-info">
+                <a href="/u/{{ post.author.username }}" class="post-author-name">{{ post.author.username }}</a>
+                <small class="muted">{{ post.created_at }}</small>
+            </div>
+        </div>
+
+        <!-- Media -->
+        <div class="post-media">
+            {% if post.media_type == 'video' %}
+                <video src="{{ url_for('static', filename=post.media_path) }}" controls></video>
+            {% else %}
+                <img src="{{ url_for('static', filename=post.media_path) }}" class="clickable" onclick="openLightbox(this.src)">
+            {% endif %}
+        </div>
+
+        <!-- Reactions Row -->
+        <div class="reactions-row" data-post-id="{{ post.id }}">
+            {% for emoji in ["❤️", "😂", "😮", "😢", "🔥"] %}
+            <button class="reaction-btn" onclick="reactToPost({{ post.id }}, '{{ emoji }}')" data-emoji="{{ emoji }}">
+                {{ emoji }} <span class="reaction-count" data-emoji="{{ emoji }}"></span>
+            </button>
+            {% endfor %}
+            <button class="reaction-btn comment-toggle" onclick="toggleComments()">
+                💬 <span id="comments-toggle-count">{{ comments|length }}</span>
+            </button>
+        </div>
+
+        <!-- Note -->
+        {% if post.note %}
+        <div class="post-note">
+            <strong>{{ post.author.username }}</strong> {{ post.note }}
+        </div>
+        {% endif %}
+
+        <!-- Comments Section (collapsible) -->
+        <div class="comments-section" id="comments-section">
+            <div class="comments-list" id="comments-list">
+                {% for c in comments %}
+                {% if not c.parent_id %}
+                <div class="comment-item" data-comment-id="{{ c.id }}">
+                    {% if c.avatar_path %}
+                        <img src="{{ url_for('static', filename=c.avatar_path) }}" class="comment-avatar">
+                    {% elif c.avatar_emoji %}
+                        <div class="comment-avatar-emoji">{{ c.avatar_emoji }}</div>
+                    {% else %}
+                        <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ c.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="comment-avatar">
+                    {% endif %}
+                    <div class="comment-body">
+                        <a href="/u/{{ c.username }}" class="comment-author">{{ c.username }}</a>
+                        <p class="comment-text">{{ c.text }}</p>
+
+                        <!-- Comment Reactions -->
+                        <div class="comment-actions">
+                            <div class="comment-reactions" data-comment-id="{{ c.id }}">
+                                {% for emoji in ["❤️", "😂", "😮", "😢", "🔥"] %}
+                                <button class="comment-react-btn" onclick="reactToComment({{ c.id }}, '{{ emoji }}')" data-emoji="{{ emoji }}">{{ emoji }}</button>
+                                {% endfor %}
+                            </div>
+                            <button class="reply-btn" onclick="showReplyBox({{ c.id }})">Reply</button>
+                            <small class="muted">{{ c.created_at }}</small>
+                        </div>
+
+                        <!-- Replies -->
+                        <div class="replies-list" id="replies-{{ c.id }}">
+                            {% for r in comments %}
+                            {% if r.parent_id == c.id %}
+                            <div class="reply-item">
+                                {% if r.avatar_path %}
+                                    <img src="{{ url_for('static', filename=r.avatar_path) }}" class="comment-avatar small">
+                                {% elif r.avatar_emoji %}
+                                    <div class="comment-avatar-emoji small">{{ r.avatar_emoji }}</div>
+                                {% else %}
+                                    <img src="https://api.dicebear.com/7.x/thumbs/svg?seed={{ r.username }}&backgroundColor=f5b041,e67e22,27ae60,1e8449" class="comment-avatar small">
+                                {% endif %}
+                                <div class="comment-body">
+                                    <a href="/u/{{ r.username }}" class="comment-author">{{ r.username }}</a>
+                                    <p class="comment-text">{{ r.text }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Reply Box (hidden) -->
+            <div class="reply-box" id="reply-box" style="display:none;">
+                <form id="reply-form" onsubmit="submitReply(event)">
+                    <input type="hidden" name="parent_id" id="reply-parent-id">
+                    <input type="text" name="text" id="reply-text" placeholder="Write a reply..." required maxlength="500">
+                    <button type="button" class="btn-secondary small" onclick="hideReplyBox()">Cancel</button>
+                    <button type="submit" class="btn-primary small">Reply</button>
+                </form>
+            </div>
+
+            <!-- Add Comment -->
+            {% if session.user_id %}
+            <form method="post" action="/post/{{ post.id }}/comment" class="comment-form">
+                <input type="text" name="text" id="comment-input" placeholder="Add a comment..." required maxlength="500">
+                <button type="submit" class="btn-primary">Post</button>
+            </form>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+function reactToPost(postId, emoji) {
+    var fd = new FormData();
+    fd.append('emoji', emoji);
+    fetch('/post/' + postId + '/react', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(function(data) {
+            if (!data.ok) return;
+            document.querySelectorAll('.reaction-count').forEach(function(el) {
+                var e = el.getAttribute('data-emoji');
+                var count = data.counts[e] || 0;
+                el.textContent = count > 0 ? count : '';
+            });
+            document.querySelectorAll('.reaction-btn[data-emoji]').forEach(function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-emoji') === data.my_reaction);
+            });
+        });
+}
+
+function reactToComment(commentId, emoji) {
+    var fd = new FormData();
+    fd.append('emoji', emoji);
+    fetch('/comment/' + commentId + '/react', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(function(data) {
+            if (!data.ok) return;
+            var wrap = document.querySelector('.comment-reactions[data-comment-id="' + commentId + '"]');
+            if (!wrap) return;
+            wrap.querySelectorAll('.comment-react-btn').forEach(function(btn) {
+                var e = btn.getAttribute('data-emoji');
+                var count = data.counts[e] || 0;
+                var base = btn.textContent.replace(/\s*\d+$/, '').trim();
+                btn.textContent = base + (count > 0 ? ' ' + count : '');
+                btn.classList.toggle('active', e === data.my_reaction);
+            });
+        });
+}
+
+function toggleComments() {
+    var section = document.getElementById('comments-section');
+    if (section.classList.contains('open')) {
+        section.classList.remove('open');
+    } else {
+        section.classList.add('open');
+        section.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+}
+
+function showReplyBox(commentId) {
+    document.getElementById('reply-parent-id').value = commentId;
+    var box = document.getElementById('reply-box');
+    box.style.display = 'block';
+    document.getElementById('reply-text').focus();
+}
+
+function hideReplyBox() {
+    document.getElementById('reply-box').style.display = 'none';
+    document.getElementById('reply-text').value = '';
+}
+
+function submitReply(e) {
+    e.preventDefault();
+    var commentId = document.getElementById('reply-parent-id').value;
+    var text = document.getElementById('reply-text').value.trim();
+    if (!text) return;
+    
+    var fd = new FormData();
+    fd.append('text', text);
+    fetch('/comment/' + commentId + '/reply', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'unknown'));
+            }
+        });
+}
+
+// Load reaction counts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Post reactions - trigger a GET to fetch current state
+    fetch('/p/{{ post.id }}?reactions=1')
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.counts) {
+                document.querySelectorAll('.reaction-count').forEach(function(el) {
+                    var e = el.getAttribute('data-emoji');
+                    var count = data.counts[e] || 0;
+                    el.textContent = count > 0 ? count : '';
+                });
+                document.querySelectorAll('.reaction-btn[data-emoji]').forEach(function(btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-emoji') === data.my_reaction);
+                });
+            }
+        })
+        .catch(function() {});
+});
+</script>
+
+{% endblock %}

@@ -62,7 +62,7 @@ function submitBulk() {
     <button type="button" class="btn-secondary small" onclick="toggleBulkMode()">Cancel</button>
 </div>
 
-<form method="post" action="/wardrobe/bulk_delete" id="bulk-form">
+
 <div class="grid" id="items-grid">
     {% for item in items %}
     <div class="card">
@@ -79,7 +79,7 @@ function submitBulk() {
         </div>
         {% if item.color %}<p class="muted">Color: {{ item.color }}</p>{% endif %}
         {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
-        <form method="post" action="/wardrobe/delete/{{ item.id }}" onsubmit="return confirm('{{ t("remove") }} this item?')">
+        <form method="post" action="/wardrobe/delete/{{ item.id }}" onsubmit="return confirm('Remove this item?')">
             <button class="btn-danger small">🗑️ {{ t("remove") }}</button>
         </form>
     </div>

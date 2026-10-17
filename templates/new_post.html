@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block title %}New Post{% endblock %}
+{% block main %}
+
+<a href="/profile" class="back-btn">← Back to Profile</a>
+
+<div class="page-head">
+    <h1>Create a Post 📸</h1>
+    <p class="muted">Share an outfit photo or video with the community</p>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form-card">
+
+    <label class="field-label">Source</label>
+    <select name="source" id="source-select" onchange="toggleSource()" required>
+        <option value="device">From my device (image or video)</option>
+        <option value="wardrobe">From my wardrobe</option>
+    </select>
+
+    <div id="source-device">
+        <label class="field-label">Upload image or video</label>
+        <input type="file" name="media" accept="image/*,video/*">
+    </div>
+
+    <div id="source-wardrobe" style="display:none;">
+        <label class="field-label">Choose item from wardrobe</label>
+        <select name="item_id">
+            <option value="">-- Select an item --</option>
+            {% for item in items %}
+            <option value="{{ item.id }}">{{ item.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <label class="field-label">Note (max 500 chars)</label>
+    <textarea name="note" maxlength="500" placeholder="Write something about this look..."></textarea>
+
+    <button class="btn-primary" type="submit">Publish</button>
+</form>
+
+<script>
+function toggleSource() {
+    var v = document.getElementById('source-select').value;
+    document.getElementById('source-device').style.display = (v === 'device') ? 'block' : 'none';
+    document.getElementById('source-wardrobe').style.display = (v === 'wardrobe') ? 'block' : 'none';
+}
+toggleSource();
+</script>
+
+{% endblock %}

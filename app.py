@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import os
 import uuid
 import base64
@@ -28,7 +29,17 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 db = SQL("sqlite:///ott.db")
 
 
-# ==================== AUTH ====================
+def create_notification(user_id, actor_id, ntype, target_id, message):
+    if user_id == actor_id:
+        return
+    try:
+        db.execute(
+            "INSERT INTO notifications (user_id, actor_id, type, target_id, message) VALUES (?, ?, ?, ?, ?)",
+            user_id, actor_id, ntype, target_id, message
+        )
+    except Exception as e:
+        print("Notif:", e)
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -163,6 +174,14 @@ def index():
     query = random.choice(queries)
     page = random.randint(1, 5)
     discover_images = fetch_fashion_images(query, 20, page)
+
+    try:
+        recent_outfits = db.execute(
+            "SELECT id, title, occasion, is_public FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 3",
+            uid
+        )
+    except Exception:
+        recent_outfits = []
 
     return render_template(
         "dashboard.html",
@@ -449,15 +468,7 @@ def stylist():
         random_page = random.randint(1, 10)
         inspiration = fetch_fashion_images(query, 16, random_page, randomize=True)
 
-        if result:
-            try:
-                db.execute(
-                    "INSERT INTO outfits (user_id, title, occasion, item_ids) VALUES (?, ?, ?, ?)",
-                    session["user_id"], occasion + " outfit", occasion,
-                    ",".join(str(i["id"]) for i in result)
-                )
-            except Exception:
-                pass
+        # auto-save disabled
 
     history = db.execute(
         "SELECT * FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
@@ -480,36 +491,90 @@ def stylist():
 @app.route("/profile")
 @login_required
 def profile():
-    from helpers import get_seasonal_dicebear, EMOJI_AVATARS, DICEBEAR_STYLES, get_dicebear_url
     uid = session["user_id"]
     user = db.execute("SELECT * FROM users WHERE id = ?", uid)[0]
+
     counts = {
         "item_count": db.execute("SELECT COUNT(*) AS c FROM items WHERE user_id = ?", uid)[0]["c"],
         "wishlist": db.execute("SELECT COUNT(*) AS c FROM wishlist WHERE user_id = ?", uid)[0]["c"],
         "outfits": db.execute("SELECT COUNT(*) AS c FROM outfits WHERE user_id = ?", uid)[0]["c"],
     }
-    recent_items = db.execute("SELECT * FROM items WHERE user_id = ? ORDER BY created_at DESC LIMIT 6", uid)
 
-    seasonal_url, seasonal_emoji = get_seasonal_dicebear(user["username"])
-    user_style = user["avatar_style"] or "thumbs"
-    user_dicebear_url = get_dicebear_url(user_style, user["username"])
+    recent_items = db.execute(
+        "SELECT * FROM items WHERE user_id = ? ORDER BY created_at DESC LIMIT 9",
+        uid
+    )
 
-    # Get previews for each style
-    style_previews = [
-        {"id": s["id"], "name": s["name"], "url": get_dicebear_url(s["id"], user["username"])}
-        for s in DICEBEAR_STYLES
-    ]
+    try:
+        user_posts = db.execute(
+            "SELECT * FROM posts WHERE user_id = ? AND (is_story = 0 OR is_story IS NULL) ORDER BY created_at DESC LIMIT 20",
+            uid
+        )
+    except Exception:
+        user_posts = []
+
+    try:
+        recent_outfits = db.execute(
+            "SELECT id, title, occasion, is_public FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 9",
+            uid
+        )
+    except Exception:
+        recent_outfits = []
+
+    # Fetch reposts
+    try:
+        my_reposts = db.execute("""
+            SELECT p.*, u.username AS original_author
+            FROM reposts r
+            JOIN posts p ON r.post_id = p.id
+            JOIN users u ON p.user_id = u.id
+            WHERE r.user_id = ?
+            ORDER BY r.created_at DESC LIMIT 20
+        """, uid)
+    except Exception:
+        my_reposts = []
+
+    # Followers count
+    try:
+        followers_count = db.execute(
+            "SELECT COUNT(*) AS c FROM follows WHERE following_id = ?", uid
+        )[0]["c"]
+    except Exception:
+        followers_count = 0
+
+    # Following count
+    try:
+        following_count = db.execute(
+            "SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?", uid
+        )[0]["c"]
+    except Exception:
+        following_count = 0
+
+    # Check if user has active story
+    try:
+        active_stories = db.execute("""
+            SELECT id FROM posts
+            WHERE user_id = ? AND is_story = 1
+              AND (expires_at IS NULL OR expires_at > datetime('now'))
+        """, uid)
+        has_active_story = len(active_stories) > 0
+        active_story_id = active_stories[0]["id"] if active_stories else None
+    except Exception:
+        has_active_story = False
+        active_story_id = None
 
     return render_template(
         "profile.html",
         user=user,
         counts=counts,
         recent_items=recent_items,
-        dicebear_url=user_dicebear_url,
-        seasonal_url=seasonal_url,
-        seasonal_emoji=seasonal_emoji,
-        emoji_avatars=EMOJI_AVATARS,
-        style_previews=style_previews,
+        user_posts=user_posts,
+        my_reposts=my_reposts,
+        recent_outfits=recent_outfits,
+        has_active_story=has_active_story,
+        active_story_id=active_story_id,
+        followers_count=followers_count,
+        following_count=following_count,
     )
 
 
@@ -792,39 +857,6 @@ def set_avatar_style():
     )
     flash("Avatar style updated")
     return redirect("/profile")
-
-
-@app.route("/outfits")
-@login_required
-def outfit_history():
-    import json as json_lib
-    uid = session["user_id"]
-    rows = db.execute(
-        "SELECT * FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
-        uid
-    )
-    outfits = []
-    for r in rows:
-        o = dict(r)
-        ids = [i for i in (o.get("item_ids") or "").split(",") if i.strip().isdigit()]
-        items = []
-        for iid in ids[:8]:
-            item = db.execute("SELECT * FROM items WHERE id = ? AND user_id = ?", int(iid), uid)
-            if item:
-                items.append(dict(item[0]))
-        o["items"] = items
-        outfits.append(o)
-
-    # Stats
-    stats = {
-        "total": len(rows),
-        "by_occasion": {},
-    }
-    for r in rows:
-        occ = r["occasion"] or "casual"
-        stats["by_occasion"][occ] = stats["by_occasion"].get(occ, 0) + 1
-
-    return render_template("outfit_history.html", outfits=outfits, stats=stats)
 
 
 @app.route("/wardrobe/bulk_delete", methods=["POST"])
@@ -1334,11 +1366,48 @@ def barcode_page():
     return render_template("barcode.html")
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
 
 
-# ============ PUBLIC PROFILE ============
+@app.route("/story/new", methods=["GET", "POST"])
+@login_required
+def new_story():
+    if request.method == "POST":
+        note = request.form.get("note", "").strip()[:200]
+        file = request.files.get("media")
+        if not file or not file.filename:
+            flash("Please select an image or video")
+            return redirect("/story/new")
+        
+        ext = file.filename.rsplit(".", 1)[-1].lower()
+        media_type = "image" if ext in ["png","jpg","jpeg","gif","webp"] else "video" if ext in ["mp4","mov","webm"] else None
+        if not media_type:
+            flash("Invalid file type")
+            return redirect("/story/new")
+        
+        fname = "story_" + str(uuid.uuid4())[:8] + "." + ext
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], fname))
+        media_path = "uploads/" + fname
+        
+        try:
+            duration = int(request.form.get("duration", 24))
+        except ValueError:
+            duration = 24
+        if duration not in [1, 6, 12, 24, 48, 168]:
+            duration = 24
+        
+        expires_at = (datetime.now() + timedelta(hours=duration)).strftime("%Y-%m-%d %H:%M:%S")
+        db.execute(
+            "INSERT INTO posts (user_id, media_path, media_type, note, is_public, is_story, expires_at, duration_hours) VALUES (?, ?, ?, ?, 1, 1, ?, ?)",
+            session["user_id"], media_path, media_type, note, expires_at, duration
+        )
+        flash("Story posted! It will expire in 24 hours.")
+        return redirect("/community")
+    
+    return render_template("new_story.html")
+
+
+
+
 @app.route("/u/<username>")
 def public_profile(username):
     user_rows = db.execute("SELECT id, username, city, country, avatar_path, avatar_emoji, avatar_type, streak, created_at FROM users WHERE username = ?", username)
@@ -1348,10 +1417,17 @@ def public_profile(username):
     uid = profile_user["id"]
     current_uid = session.get("user_id")
 
+    # Check if blocked
+    if current_uid:
+        blocked = db.execute("SELECT id FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)",
+                             current_uid, uid, uid, current_uid)
+        if blocked:
+            return apology("This user is not available", 403)
+
+    is_own_profile = (current_uid == uid)
+
     # Stats
     stats = {
-        "items": db.execute("SELECT COUNT(*) AS c FROM items WHERE user_id = ?", uid)[0]["c"],
-        "outfits": db.execute("SELECT COUNT(*) AS c FROM outfits WHERE user_id = ?", uid)[0]["c"],
         "followers": db.execute("SELECT COUNT(*) AS c FROM follows WHERE following_id = ?", uid)[0]["c"],
         "following": db.execute("SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?", uid)[0]["c"],
     }
@@ -1362,47 +1438,82 @@ def public_profile(username):
         r = db.execute("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?", current_uid, uid)
         is_following = len(r) > 0
 
-    # Public outfits with likes/comments count
-    outfits = db.execute("SELECT * FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 12", uid)
-    outfit_list = []
-    for o in outfits:
-        o = dict(o)
-        o["likes"] = db.execute("SELECT COUNT(*) AS c FROM likes WHERE outfit_id = ?", o["id"])[0]["c"]
-        o["comments"] = db.execute("SELECT COUNT(*) AS c FROM comments WHERE outfit_id = ?", o["id"])[0]["c"]
-        outfit_list.append(o)
+    # Check if private
+    is_private = profile_user.get("is_private", 0) == 1 if "is_private" in profile_user else False
+    is_following = False
+    if current_uid and current_uid != uid:
+        r = db.execute("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?", current_uid, uid)
+        is_following = len(r) > 0
+    
+    # Show posts only if: not private OR own profile OR following
+    can_view_content = (not is_private) or is_own_profile or is_following
+    
+    if can_view_content:
+        posts = db.execute("""
+            SELECT p.* FROM posts p
+            WHERE p.user_id = ? AND p.is_public = 1
+            ORDER BY p.created_at DESC LIMIT 30
+        """, uid)
+        reposts = []
+        try:
+            reposts = db.execute("""
+                SELECT p.*, u.username AS original_author, r.created_at AS reposted_at
+                FROM reposts r
+                JOIN posts p ON r.post_id = p.id
+                JOIN users u ON p.user_id = u.id
+                WHERE r.user_id = ?
+                ORDER BY r.created_at DESC LIMIT 20
+            """, uid)
+        except Exception:
+            pass
+    else:
+        posts = []
+        reposts = []
 
-    return render_template("public_profile.html",
-        profile_user=profile_user, stats=stats,
-        is_following=is_following, outfits=outfit_list,
-        current_uid=current_uid)
-
-
-# ============ FOLLOW ============
-@app.route("/follow/<int:user_id>", methods=["POST"])
-@login_required
-def follow_user(user_id):
-    uid = session["user_id"]
-    if uid == user_id:
-        flash("Cannot follow yourself")
-        return redirect(request.referrer or "/")
+    # Reposts
+    reposts = []
     try:
-        db.execute("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", uid, user_id)
-        flash("Now following")
+        reposts = db.execute("""
+            SELECT p.*, u.username AS original_author, r.created_at AS reposted_at
+            FROM reposts r
+            JOIN posts p ON r.post_id = p.id
+            JOIN users u ON p.user_id = u.id
+            WHERE r.user_id = ?
+            ORDER BY r.created_at DESC LIMIT 20
+        """, uid)
     except Exception:
         pass
-    return redirect(request.referrer or "/")
+
+    # Has active story
+    try:
+        active_stories = db.execute("""
+            SELECT id FROM posts
+            WHERE user_id = ? AND is_story = 1
+              AND (expires_at IS NULL OR expires_at > datetime('now'))
+            ORDER BY created_at DESC LIMIT 1
+        """, uid)
+        has_active_story = len(active_stories) > 0
+        active_story_id = active_stories[0]["id"] if active_stories else None
+    except Exception:
+        has_active_story = False
+        active_story_id = None
+
+    return render_template("public_profile.html",
+        profile_user=profile_user,
+        stats=stats,
+        is_following=is_following,
+        posts=posts,
+        reposts=reposts,
+        current_uid=current_uid,
+        is_own_profile=is_own_profile,
+        has_active_story=has_active_story,
+        active_story_id=active_story_id,
+        is_private=is_private,
+        can_view_content=can_view_content,
+    )
 
 
-@app.route("/unfollow/<int:user_id>", methods=["POST"])
-@login_required
-def unfollow_user(user_id):
-    uid = session["user_id"]
-    db.execute("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", uid, user_id)
-    flash("Unfollowed")
-    return redirect(request.referrer or "/")
 
-
-# ============ LIKE OUTFIT ============
 @app.route("/like/<int:outfit_id>", methods=["POST"])
 @login_required
 def like_outfit(outfit_id):
@@ -1413,6 +1524,11 @@ def like_outfit(outfit_id):
         return jsonify({"ok": True, "action": "unliked"})
     else:
         db.execute("INSERT INTO likes (user_id, outfit_id) VALUES (?, ?)", uid, outfit_id)
+        # Create notification for outfit owner
+        outfit = db.execute("SELECT user_id, title FROM outfits WHERE id = ?", outfit_id)
+        if outfit:
+            owner_id = outfit[0]["user_id"]
+            create_notification(owner_id, uid, "like", outfit_id, "liked your outfit")
         return jsonify({"ok": True, "action": "liked"})
 
 
@@ -1459,236 +1575,568 @@ def add_comment(outfit_id):
         return redirect(request.referrer or "/")
     db.execute("INSERT INTO comments (user_id, outfit_id, text) VALUES (?, ?, ?)",
                session["user_id"], outfit_id, text[:500])
+    # Create notification for outfit owner
+    outfit = db.execute("SELECT user_id, title FROM outfits WHERE id = ?", outfit_id)
+    if outfit:
+        owner_id = outfit[0]["user_id"]
+        create_notification(owner_id, session["user_id"], "comment", outfit_id, "commented on your outfit")
     flash("Comment added")
     return redirect(request.referrer or "/")
 
 
-@app.route("/comment/delete/<int:comment_id>", methods=["POST"])
-@login_required
-def delete_comment(comment_id):
-    row = db.execute("SELECT * FROM comments WHERE id = ?", comment_id)
-    if row and row[0]["user_id"] == session["user_id"]:
-        db.execute("DELETE FROM comments WHERE id = ?", comment_id)
-        flash("Comment deleted")
-    return redirect(request.referrer or "/")
-
-
-# ============ COMMUNITY WALL ============
 @app.route("/community")
 @login_required
 def community():
     uid = session["user_id"]
-
-    # Get all public outfits with stats
-    outfits = db.execute("""
-        SELECT o.*, u.username FROM outfits o
-        JOIN users u ON o.user_id = u.id
-        ORDER BY o.created_at DESC LIMIT 50
-    """)
-
-    outfit_list = []
-    for o in outfits:
-        o = dict(o)
-        o["likes"] = db.execute("SELECT COUNT(*) AS c FROM likes WHERE outfit_id = ?", o["id"])[0]["c"]
-        o["comments"] = db.execute("SELECT COUNT(*) AS c FROM comments WHERE outfit_id = ?", o["id"])[0]["c"]
-        outfit_list.append(o)
-
-    # Sort by likes
-    outfit_list.sort(key=lambda x: x["likes"], reverse=True)
-
-    # Suggested users to follow
-    suggested = db.execute("""
-        SELECT id, username, avatar_path, avatar_emoji, avatar_type FROM users
-        WHERE id != ? AND id NOT IN (SELECT following_id FROM follows WHERE follower_id = ?)
-        ORDER BY RANDOM() LIMIT 6
-    """, uid, uid)
-
-    return render_template("community.html", outfits=outfit_list, suggested=suggested)
-
-
-# ============ K-POP IDOL MATCH (Rule-based) ============
-K_IDOLS = [
-    {"name": "Jennie", "group": "BLACKPINK", "style": "Old Money meets Street", "colors": ["black", "white", "pink"], "keywords": ["chanel", "crop", "tweed"], "emoji": "🖤"},
-    {"name": "Jungkook", "group": "BTS", "style": "Streetwear Casual", "colors": ["black", "white", "grey"], "keywords": ["hoodie", "cargo", "sneakers"], "emoji": "💜"},
-    {"name": "Lisa", "group": "BLACKPINK", "style": "Bold Streetwear", "colors": ["black", "red", "yellow"], "keywords": ["crop", "cargo", "platform"], "emoji": "🔥"},
-    {"name": "Jimin", "group": "BTS", "style": "Soft Elegant", "colors": ["white", "beige", "black"], "keywords": ["shirt", "blazer", "minimal"], "emoji": "✨"},
-    {"name": "Rosé", "group": "BLACKPINK", "style": "Y2K Minimal", "colors": ["pink", "white", "black"], "keywords": ["skirt", "tee", "sneakers"], "emoji": "🌸"},
-    {"name": "V", "group": "BTS", "style": "Old Money", "colors": ["brown", "beige", "white"], "keywords": ["coat", "suit", "classic"], "emoji": "🤎"},
-    {"name": "IU", "group": "Solo", "style": "Soft Casual", "colors": ["pink", "white", "beige"], "keywords": ["knit", "skirt", "soft"], "emoji": "💫"},
-    {"name": "Hanni", "group": "NewJeans", "style": "Y2K Fresh", "colors": ["pink", "blue", "white"], "keywords": ["tee", "skirt", "sneakers"], "emoji": "💙"},
-    {"name": "Karina", "group": "aespa", "style": "Futuristic Y2K", "colors": ["silver", "black", "white"], "keywords": ["crop", "leather", "futuristic"], "emoji": "⚡"},
-    {"name": "Taehyung", "group": "BTS", "style": "Vintage Classic", "colors": ["brown", "navy", "white"], "keywords": ["coat", "turtleneck", "classic"], "emoji": "🍂"},
-]
+    
+    try:
+        posts = db.execute("SELECT p.*, u.username, u.avatar_path, u.avatar_emoji FROM posts p JOIN users u ON p.user_id = u.id WHERE p.is_public = 1 AND (p.is_story = 0 OR p.is_story IS NULL) ORDER BY p.created_at DESC LIMIT 30")
+    except Exception:
+        posts = []
+    
+    try:
+        stories = db.execute("SELECT p.*, u.username, u.avatar_path, u.avatar_emoji FROM posts p JOIN users u ON p.user_id = u.id WHERE p.is_story = 1 AND (p.expires_at IS NULL OR p.expires_at > datetime('now')) ORDER BY p.created_at DESC")
+    except Exception:
+        stories = []
+    
+    story_users = {}
+    for s in stories:
+        s = dict(s)
+        if s["user_id"] not in story_users:
+            story_users[s["user_id"]] = {
+                "user_id": s["user_id"],
+                "username": s["username"],
+                "avatar_path": s["avatar_path"],
+                "avatar_emoji": s["avatar_emoji"],
+                "stories": []
+            }
+        story_users[s["user_id"]]["stories"].append(s)
+    
+    try:
+        suggested = db.execute("SELECT id, username, avatar_path, avatar_emoji FROM users WHERE id != ? ORDER BY RANDOM() LIMIT 8", uid)
+    except Exception:
+        suggested = []
+    
+    return render_template("community.html",
+        posts=posts,
+        story_users=list(story_users.values()),
+        suggested=suggested)
 
 
-@app.route("/idol-match")
+
+
+# ============================================
+# RESTORED ROUTES
+# ============================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.route("/outfits")
 @login_required
-def idol_match():
-    from helpers import _classify_item, _detect_style, _detect_color_group
+def outfit_history():
     uid = session["user_id"]
-    items = db.execute("SELECT * FROM items WHERE user_id = ?", uid)
-
-    if len(items) < 3:
-        return render_template("idol_match.html", matches=[], message="Add at least 3 items to your wardrobe first!")
-
-    # Analyze user's style
-    user_colors = {}
-    user_keywords = set()
-    user_styles = set()
-
-    for item in items:
-        color = (item.get("color") or "").lower()
-        if color:
-            user_colors[color] = user_colors.get(color, 0) + 1
-        name = (item.get("name") or "").lower()
-        for kw in ["crop", "cargo", "hoodie", "shirt", "blazer", "skirt", "tee", "coat", "turtleneck", "leather", "sneakers", "platform", "knit", "suit"]:
-            if kw in name:
-                user_keywords.add(kw)
-        style = (item.get("style") or "").lower()
-        if style:
-            user_styles.add(style)
-
-    # Score each idol
-    matches = []
-    for idol in K_IDOLS:
-        score = 0
-        reasons = []
-
-        # Color match
-        color_hits = sum(1 for c in idol["colors"] if c in user_colors)
-        score += color_hits * 15
-        if color_hits:
-            reasons.append(f"{color_hits} matching colors")
-
-        # Keyword match
-        kw_hits = sum(1 for kw in idol["keywords"] if kw in user_keywords)
-        score += kw_hits * 20
-        if kw_hits:
-            reasons.append(f"{kw_hits} similar items")
-
-        # Style match
-        style_lower = idol["style"].lower()
-        for us in user_styles:
-            if us in style_lower or any(w in style_lower for w in us.split()):
-                score += 25
-                reasons.append(f"style vibe: {us}")
-                break
-
-        matches.append({
-            "idol": idol,
-            "score": min(score, 95),
-            "reasons": reasons[:3],
-        })
-
-    matches.sort(key=lambda x: x["score"], reverse=True)
-    return render_template("idol_match.html", matches=matches[:5], message=None)
+    try:
+        rows = db.execute("SELECT id, title, occasion, created_at FROM outfits WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", uid)
+    except Exception:
+        rows = []
+    return render_template("outfit_history.html", outfits=rows, total=len(rows))
 
 
-# ============ FASHION WEEKS (RSS) ============
-@app.route("/fashion-weeks")
+@app.route("/notifications")
 @login_required
-def fashion_weeks():
-    from helpers import fetch_trends_from_rss
-    items = fetch_trends_from_rss("all")
-    # Filter for runway-related
-    runway = [it for it in items if any(k in it["title"].lower() for k in ["runway", "fashion week", "seoul", "paris", "milan", "new york fashion"])]
-    if not runway:
-        runway = items[:10]
-
-    weeks = [
-        {"name": "Seoul Fashion Week", "when": "March & September", "emoji": "🇰🇷", "site": "https://www.seoulfashionweek.org"},
-        {"name": "Paris Fashion Week", "when": "Feb/March & Sept/Oct", "emoji": "🇫🇷", "site": "https://www.fhcm.paris"},
-        {"name": "Milan Fashion Week", "when": "Feb/March & Sept/Oct", "emoji": "🇮🇹", "site": "https://www.cameramoda.it"},
-        {"name": "New York Fashion Week", "when": "February & September", "emoji": "🇺🇸", "site": "https://nyfw.com"},
-        {"name": "London Fashion Week", "when": "February & September", "emoji": "🇬🇧", "site": "https://www.londonfashionweek.co.uk"},
-    ]
-    return render_template("fashion_weeks.html", weeks=weeks, runway=runway)
-
-
-# ============ AI FROM PHOTOS (Canvas color analysis) ============
-@app.route("/photo-style")
-@login_required
-def photo_style():
-    return render_template("photo_style.html")
-
-
-@app.route("/photo-style/analyze", methods=["POST"])
-@login_required
-def photo_style_analyze():
-    import base64
-    data = request.get_json()
-    image_data = data.get("image", "")
-    if not image_data or not image_data.startswith("data:image"):
-        return jsonify({"ok": False, "error": "Invalid image"})
-
-    # Client sends dominant colors as list
-    colors = data.get("colors", [])
-    if not colors:
-        return jsonify({"ok": False, "error": "No colors detected"})
-
-    # Suggest outfit from wardrobe based on colors
+def notifications():
     uid = session["user_id"]
-    items = db.execute("SELECT * FROM items WHERE user_id = ?", uid)
+    rows = db.execute("SELECT n.*, u.username AS actor_name, u.avatar_path AS actor_avatar, u.avatar_emoji AS actor_emoji FROM notifications n LEFT JOIN users u ON n.actor_id = u.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50", uid)
+    notifs = []
+    for n in rows:
+        n = dict(n)
+        ntype = n.get("type", "")
+        target = n.get("target_id")
+        if ntype in ["like", "reaction", "comment", "reply"] and target:
+            n["link"] = "/p/" + str(target)
+        elif ntype == "follow":
+            n["link"] = "/u/" + (n.get("actor_name") or "")
+        else:
+            n["link"] = "/community"
+        notifs.append(n)
+    db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", uid)
+    return render_template("notifications.html", notifications=notifs)
 
-    from helpers import _detect_color_group
-    # Find items matching the color groups
-    target_groups = set()
-    for c in colors:
-        g = _detect_color_group(c)
-        if g:
-            target_groups.add(g)
 
-    if not target_groups:
-        target_groups = {"neutral"}
+@app.route("/notifications/count")
+@login_required
+def notifications_count():
+    uid = session["user_id"]
+    row = db.execute("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0", uid)
+    return jsonify({"count": row[0]["c"] if row else 0})
 
-    matches = []
-    for item in items:
-        item_group = _detect_color_group(item.get("color", ""))
-        if item_group in target_groups:
-            matches.append(dict(item))
 
-    tip = "Style with these colors - " + ", ".join(target_groups)
+@app.route("/notifications/clear", methods=["POST"])
+@login_required
+def clear_notifications():
+    db.execute("DELETE FROM notifications WHERE user_id = ?", session["user_id"])
+    flash("Notifications cleared")
+    return redirect("/notifications")
+
+
+@app.route("/unfollow/<int:user_id>", methods=["POST"])
+@login_required
+def unfollow_user(user_id):
+    db.execute("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", session["user_id"], user_id)
+    flash("Unfollowed")
+    return redirect(request.referrer or "/following")
+
+
+@app.route("/block/<int:user_id>", methods=["POST"])
+@login_required
+def block_user(user_id):
+    uid = session["user_id"]
+    if uid == user_id:
+        flash("Cannot block yourself")
+        return redirect(request.referrer or "/")
+    try:
+        db.execute("INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?, ?)", uid, user_id)
+        db.execute("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", uid, user_id)
+        db.execute("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", user_id, uid)
+        flash("User blocked")
+    except Exception as e:
+        print("Block error:", e)
+    return redirect(request.referrer or "/")
+
+
+@app.route("/unblock/<int:user_id>", methods=["POST"])
+@login_required
+def unblock_user(user_id):
+    db.execute("DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?", session["user_id"], user_id)
+    flash("User unblocked")
+    return redirect("/blocked")
+
+
+@app.route("/blocked")
+@login_required
+def blocked_list():
+    uid = session["user_id"]
+    rows = db.execute("SELECT u.id, u.username, u.avatar_path, u.avatar_emoji FROM blocks b JOIN users u ON b.blocked_id = u.id WHERE b.blocker_id = ? ORDER BY b.created_at DESC", uid)
+    return render_template("blocked.html", users=rows)
+
+
+@app.route("/followers")
+@login_required
+def my_followers():
+    uid = session["user_id"]
+    rows = db.execute("SELECT u.id, u.username, u.avatar_path, u.avatar_emoji FROM follows f JOIN users u ON f.follower_id = u.id WHERE f.following_id = ? ORDER BY f.created_at DESC", uid)
+    followers = []
+    for r in rows:
+        r = dict(r)
+        back = db.execute("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?", uid, r["id"])
+        r["follows_back"] = len(back) > 0
+        followers.append(r)
+    return render_template("followers.html", users=followers, title="My Followers")
+
+
+@app.route("/following")
+@login_required
+def my_following():
+    uid = session["user_id"]
+    rows = db.execute("SELECT u.id, u.username, u.avatar_path, u.avatar_emoji FROM follows f JOIN users u ON f.following_id = u.id WHERE f.follower_id = ? ORDER BY f.created_at DESC", uid)
+    return render_template("followers.html", users=rows, title="Following")
+
+
+@app.route("/search_users")
+@login_required
+def search_users():
+    uid = session["user_id"]
+    q = request.args.get("q", "").strip()
+    if q:
+        users = db.execute("SELECT id, username, avatar_path, avatar_emoji, city, country FROM users WHERE username LIKE ? AND id != ? ORDER BY username LIMIT 30", "%" + q + "%", uid)
+    else:
+        users = db.execute("SELECT id, username, avatar_path, avatar_emoji, city, country FROM users WHERE id != ? ORDER BY RANDOM() LIMIT 30", uid)
+    result = []
+    for u in users:
+        u = dict(u)
+        r = db.execute("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?", uid, u["id"])
+        u["is_following"] = len(r) > 0
+        result.append(u)
+    return render_template("search_users.html", users=result, q=q)
+
+
+@app.route("/toggle_privacy", methods=["POST"])
+@login_required
+def toggle_privacy():
+    uid = session["user_id"]
+    user = db.execute("SELECT is_private FROM users WHERE id = ?", uid)
+    current = user[0]["is_private"] if user else 0
+    new_val = 0 if current == 1 else 1
+    db.execute("UPDATE users SET is_private = ? WHERE id = ?", new_val, uid)
+    flash("Profile is now " + ("private" if new_val else "public"))
+    return redirect("/profile")
+
+
+@app.route("/post/new", methods=["GET", "POST"])
+@login_required
+def new_post():
+    uid = session["user_id"]
+    if request.method == "POST":
+        note = request.form.get("note", "").strip()[:500]
+        file = request.files.get("media")
+        media_path = None
+        media_type = "image"
+        if file and file.filename:
+            ext = file.filename.rsplit(".", 1)[-1].lower()
+            if ext in ["png", "jpg", "jpeg", "gif", "webp"]:
+                media_type = "image"
+            elif ext in ["mp4", "mov", "webm"]:
+                media_type = "video"
+            else:
+                flash("Only images or videos")
+                return redirect("/post/new")
+            fname = "post_" + str(uuid.uuid4())[:8] + "." + ext
+            file.save(os.path.join(app.config["UPLOAD_FOLDER"], fname))
+            media_path = "uploads/" + fname
+        if not media_path:
+            flash("Select a file")
+            return redirect("/post/new")
+        db.execute("INSERT INTO posts (user_id, media_path, media_type, note, is_public) VALUES (?, ?, ?, ?, 1)", uid, media_path, media_type, note)
+        flash("Post published!")
+        return redirect("/profile")
+    return render_template("new_post.html")
+
+
+@app.route("/p/<int:post_id>")
+def view_post(post_id):
+    row = db.execute("SELECT * FROM posts WHERE id = ?", post_id)
+    if not row:
+        return apology("Not found", 404)
+    p = dict(row[0])
+    u = db.execute("SELECT id, username, avatar_path, avatar_emoji FROM users WHERE id = ?", p["user_id"])
+    p["author"] = dict(u[0]) if u else {"username": "Someone", "id": 0}
+    if request.args.get("json") == "1":
+        return jsonify({"id": p["id"], "media_url": "/static/" + p["media_path"], "media_type": p["media_type"], "note": p.get("note") or "", "user_id": p["user_id"]})
+    try:
+        p["likes"] = db.execute("SELECT COUNT(*) AS c FROM post_reactions WHERE post_id = ?", post_id)[0]["c"]
+        p["comments_count"] = db.execute("SELECT COUNT(*) AS c FROM post_comments WHERE post_id = ?", post_id)[0]["c"]
+        p["is_liked"] = False
+        if session.get("user_id"):
+            r = db.execute("SELECT id FROM post_reactions WHERE user_id = ? AND post_id = ?", session["user_id"], post_id)
+            p["is_liked"] = len(r) > 0
+        comments = db.execute("SELECT c.*, u.username, u.avatar_path, u.avatar_emoji FROM post_comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC", post_id)
+    except Exception:
+        p["likes"] = 0
+        p["comments_count"] = 0
+        p["is_liked"] = False
+        comments = []
+    return render_template("view_post.html", post=p, comments=comments)
+
+
+@app.route("/follow/<int:user_id>", methods=["POST"])
+@login_required
+def follow_user(user_id):
+    uid = session["user_id"]
+    if uid == user_id:
+        flash("Cannot follow yourself")
+        return redirect(request.referrer or "/")
+    try:
+        db.execute("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", uid, user_id)
+        create_notification(user_id, uid, "follow", uid, "started following you")
+        flash("Now following")
+    except Exception:
+        pass
+    return redirect(request.referrer or "/")
+
+
+# ============================================
+# POST COMMENTS API
+# ============================================
+@app.route("/post/<int:post_id>/comments")
+@login_required
+def get_post_comments(post_id):
+    try:
+        comments = db.execute("""
+            SELECT c.*, u.username, u.avatar_path, u.avatar_emoji
+            FROM post_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = ?
+            ORDER BY c.created_at ASC
+        """, post_id)
+        result = []
+        for c in comments:
+            c = dict(c)
+            reactions = db.execute(
+                "SELECT emoji, COUNT(*) AS c FROM comment_reactions WHERE comment_id = ? GROUP BY emoji",
+                c["id"]
+            )
+            c["reactions"] = {r["emoji"]: r["c"] for r in reactions}
+            result.append(c)
+        return jsonify({"ok": True, "comments": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ============================================
+# POST REACTIONS API
+# ============================================
+@app.route("/post/<int:post_id>/reactions")
+@login_required
+def get_post_reactions(post_id):
+    try:
+        rows = db.execute(
+            "SELECT emoji, COUNT(*) AS c FROM post_reactions WHERE post_id = ? GROUP BY emoji",
+            post_id
+        )
+        counts = {r["emoji"]: r["c"] for r in rows}
+        my = None
+        r = db.execute(
+            "SELECT emoji FROM post_reactions WHERE user_id = ? AND post_id = ?",
+            session["user_id"], post_id
+        )
+        if r:
+            my = r[0]["emoji"]
+        return jsonify({"ok": True, "counts": counts, "my_reaction": my, "total": sum(counts.values())})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ============================================
+# POST REACT
+# ============================================
+@app.route("/post/<int:post_id>/react", methods=["POST"])
+@login_required
+def react_to_post(post_id):
+    emoji = request.form.get("emoji", "❤️")
+    valid = ["❤️", "😂", "😮", "😢", "🔥"]
+    if emoji not in valid:
+        emoji = "❤️"
+    uid = session["user_id"]
+    existing = db.execute("SELECT emoji FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, post_id)
+    if existing:
+        if existing[0]["emoji"] == emoji:
+            db.execute("DELETE FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, post_id)
+        else:
+            db.execute("UPDATE post_reactions SET emoji = ? WHERE user_id = ? AND post_id = ?", emoji, uid, post_id)
+    else:
+        db.execute("INSERT INTO post_reactions (user_id, post_id, emoji) VALUES (?, ?, ?)", uid, post_id, emoji)
+        post = db.execute("SELECT user_id FROM posts WHERE id = ?", post_id)
+        if post and post[0]["user_id"] != uid:
+            create_notification(post[0]["user_id"], uid, "reaction", post_id, "reacted " + emoji)
+    counts = db.execute("SELECT emoji, COUNT(*) AS c FROM post_reactions WHERE post_id = ? GROUP BY emoji", post_id)
+    my = db.execute("SELECT emoji FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, post_id)
+    return jsonify({"ok": True, "counts": {c["emoji"]: c["c"] for c in counts}, "my_reaction": my[0]["emoji"] if my else None})
+
+
+# ============================================
+# COMMENT REACT
+# ============================================
+@app.route("/comment/<int:comment_id>/react", methods=["POST"])
+@login_required
+def react_to_comment(comment_id):
+    emoji = request.form.get("emoji", "❤️")
+    valid = ["❤️", "😂", "😮", "😢", "🔥"]
+    if emoji not in valid:
+        emoji = "❤️"
+    uid = session["user_id"]
+    existing = db.execute("SELECT emoji FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, comment_id)
+    if existing:
+        if existing[0]["emoji"] == emoji:
+            db.execute("DELETE FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, comment_id)
+        else:
+            db.execute("UPDATE comment_reactions SET emoji = ? WHERE user_id = ? AND comment_id = ?", emoji, uid, comment_id)
+    else:
+        db.execute("INSERT INTO comment_reactions (user_id, comment_id, emoji) VALUES (?, ?, ?)", uid, comment_id, emoji)
+    counts = db.execute("SELECT emoji, COUNT(*) AS c FROM comment_reactions WHERE comment_id = ? GROUP BY emoji", comment_id)
+    my = db.execute("SELECT emoji FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, comment_id)
+    return jsonify({"ok": True, "counts": {c["emoji"]: c["c"] for c in counts}, "my_reaction": my[0]["emoji"] if my else None})
+
+
+# ============================================
+# STORY REACT
+# ============================================
+@app.route("/story/<int:story_id>/react", methods=["POST"])
+@login_required
+def react_to_story(story_id):
+    emoji = request.form.get("emoji", "❤️")
+    valid = ["❤️", "😂", "😮", "😢", "🔥"]
+    if emoji not in valid:
+        emoji = "❤️"
+    uid = session["user_id"]
+    existing = db.execute("SELECT emoji FROM story_reactions WHERE user_id = ? AND story_id = ?", uid, story_id)
+    if existing:
+        if existing[0]["emoji"] == emoji:
+            db.execute("DELETE FROM story_reactions WHERE user_id = ? AND story_id = ?", uid, story_id)
+        else:
+            db.execute("UPDATE story_reactions SET emoji = ? WHERE user_id = ? AND story_id = ?", emoji, uid, story_id)
+    else:
+        db.execute("INSERT INTO story_reactions (user_id, story_id, emoji) VALUES (?, ?, ?)", uid, story_id, emoji)
+        post = db.execute("SELECT user_id FROM posts WHERE id = ?", story_id)
+        if post and post[0]["user_id"] != uid:
+            create_notification(post[0]["user_id"], uid, "story_reaction", story_id, "reacted " + emoji)
+    counts = db.execute("SELECT emoji, COUNT(*) AS c FROM story_reactions WHERE story_id = ? GROUP BY emoji", story_id)
+    my = db.execute("SELECT emoji FROM story_reactions WHERE user_id = ? AND story_id = ?", uid, story_id)
+    return jsonify({"ok": True, "counts": {c["emoji"]: c["c"] for c in counts}, "my_reaction": my[0]["emoji"] if my else None})
+
+
+# ============================================
+# DELETE POST
+# ============================================
+@app.route("/post/delete/<int:post_id>", methods=["POST"])
+@login_required
+def delete_post(post_id):
+    row = db.execute("SELECT * FROM posts WHERE id = ? AND user_id = ?", post_id, session["user_id"])
+    if row:
+        db.execute("DELETE FROM post_reactions WHERE post_id = ?", post_id)
+        db.execute("DELETE FROM post_comments WHERE post_id = ?", post_id)
+        db.execute("DELETE FROM reposts WHERE post_id = ?", post_id)
+        db.execute("DELETE FROM story_reactions WHERE story_id = ?", post_id)
+        db.execute("DELETE FROM posts WHERE id = ?", post_id)
+        flash("Post deleted")
+    return redirect(request.referrer or "/profile")
+
+
+# ============================================
+# REMOVE REPOST
+# ============================================
+@app.route("/repost/<int:post_id>/remove", methods=["POST"])
+@login_required
+def remove_repost(post_id):
+    db.execute("DELETE FROM reposts WHERE user_id = ? AND post_id = ?", session["user_id"], post_id)
+    flash("Repost removed")
+    return redirect(request.referrer or "/profile")
+
+
+# ============================================
+# POST COMMENT
+# ============================================
+@app.route("/post/<int:post_id>/comment", methods=["POST"])
+@login_required
+def comment_post(post_id):
+    text = (request.form.get("text") or "").strip()
+    if not text:
+        flash("Empty comment")
+        return redirect(request.referrer or "/community")
+    db.execute("INSERT INTO post_comments (user_id, post_id, text) VALUES (?, ?, ?)",
+               session["user_id"], post_id, text[:500])
+    post = db.execute("SELECT user_id FROM posts WHERE id = ?", post_id)
+    if post and post[0]["user_id"] != session["user_id"]:
+        create_notification(post[0]["user_id"], session["user_id"], "comment", post_id, "commented")
+    flash("Comment added")
+    return redirect(request.referrer or "/community")
+
+
+# ============================================
+# COMMENT EDIT
+# ============================================
+@app.route("/comment/<int:comment_id>/edit", methods=["POST"])
+@login_required
+def edit_comment(comment_id):
+    text = (request.form.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Empty"})
+    row = db.execute("SELECT * FROM post_comments WHERE id = ? AND user_id = ?", comment_id, session["user_id"])
+    if not row:
+        return jsonify({"ok": False, "error": "Not authorized"})
+    db.execute("UPDATE post_comments SET text = ? WHERE id = ?", text[:500], comment_id)
+    return jsonify({"ok": True, "text": text[:500]})
+
+
+# ============================================
+# COMMENT DELETE
+# ============================================
+@app.route("/comment/<int:comment_id>/reply", methods=["POST"])
+@login_required
+def reply_to_comment(comment_id):
+    text = (request.form.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Empty"})
+    parent = db.execute("SELECT post_id, user_id FROM post_comments WHERE id = ?", comment_id)
+    if not parent:
+        return jsonify({"ok": False, "error": "Not found"})
+    post_id = parent[0]["post_id"]
+    db.execute("INSERT INTO post_comments (user_id, post_id, text, parent_id) VALUES (?, ?, ?, ?)",
+               session["user_id"], post_id, text[:500], comment_id)
+    if parent[0]["user_id"] != session["user_id"]:
+        create_notification(parent[0]["user_id"], session["user_id"], "reply", post_id, "replied")
+    return jsonify({"ok": True})
+
+
+@app.route("/comment/<int:comment_id>/delete", methods=["POST"])
+@login_required
+def ott_delete_comment(comment_id):
+    row = db.execute("SELECT * FROM post_comments WHERE id = ? AND user_id = ?", comment_id, session["user_id"])
+    if not row:
+        return jsonify({"ok": False, "error": "Not authorized"})
+    db.execute("DELETE FROM comment_reactions WHERE comment_id = ?", comment_id)
+    db.execute("DELETE FROM post_comments WHERE parent_id = ?", comment_id)
+    db.execute("DELETE FROM post_comments WHERE id = ?", comment_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/post/<int:post_id>/repost", methods=["POST"])
+@login_required
+def repost_post(post_id):
+    uid = session["user_id"]
+    existing = db.execute("SELECT id FROM reposts WHERE user_id = ? AND post_id = ?", uid, post_id)
+    if existing:
+        db.execute("DELETE FROM reposts WHERE user_id = ? AND post_id = ?", uid, post_id)
+        return jsonify({"ok": True, "action": "unreposted"})
+    
+    db.execute("INSERT INTO reposts (user_id, post_id) VALUES (?, ?)", uid, post_id)
+    post = db.execute("SELECT user_id FROM posts WHERE id = ?", post_id)
+    if post and post[0]["user_id"] != uid:
+        create_notification(post[0]["user_id"], uid, "repost", post_id, "reposted your post")
+    return jsonify({"ok": True, "action": "reposted"})
+
+
+@app.route("/react/<string:type>/<int:item_id>", methods=["POST"])
+@login_required
+def react(type, item_id):
+    emoji = request.form.get("emoji", "❤️")
+    valid = ["❤️", "😂", "😮", "😢", "🔥"]
+    if emoji not in valid: emoji = "❤️"
+    uid = session["user_id"]
+    
+    if type == "post":
+        existing = db.execute("SELECT emoji FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, item_id)
+        if existing:
+            if existing[0]["emoji"] == emoji:
+                db.execute("DELETE FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, item_id)
+            else:
+                db.execute("UPDATE post_reactions SET emoji = ? WHERE user_id = ? AND post_id = ?", emoji, uid, item_id)
+        else:
+            db.execute("INSERT INTO post_reactions (user_id, post_id, emoji) VALUES (?, ?, ?)", uid, item_id, emoji)
+            post = db.execute("SELECT user_id FROM posts WHERE id = ?", item_id)
+            if post and post[0]["user_id"] != uid:
+                create_notification(post[0]["user_id"], uid, "reaction", item_id, "reacted " + emoji)
+        
+        counts = db.execute("SELECT emoji, COUNT(*) AS c FROM post_reactions WHERE post_id = ? GROUP BY emoji", item_id)
+        my = db.execute("SELECT emoji FROM post_reactions WHERE user_id = ? AND post_id = ?", uid, item_id)
+        
+    elif type == "comment":
+        existing = db.execute("SELECT emoji FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, item_id)
+        if existing:
+            if existing[0]["emoji"] == emoji:
+                db.execute("DELETE FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, item_id)
+            else:
+                db.execute("UPDATE comment_reactions SET emoji = ? WHERE user_id = ? AND comment_id = ?", emoji, uid, item_id)
+        else:
+            db.execute("INSERT INTO comment_reactions (user_id, comment_id, emoji) VALUES (?, ?, ?)", uid, item_id, emoji)
+            
+        counts = db.execute("SELECT emoji, COUNT(*) AS c FROM comment_reactions WHERE comment_id = ? GROUP BY emoji", item_id)
+        my = db.execute("SELECT emoji FROM comment_reactions WHERE user_id = ? AND comment_id = ?", uid, item_id)
 
     return jsonify({
-        "ok": True,
-        "suggested": [{"id": m["id"], "name": m["name"], "color": m.get("color", ""), "image": m.get("image_path", "")} for m in matches[:8]],
-        "tip": tip,
-        "colors": colors,
+        "ok": True, 
+        "counts": {c["emoji"]: c["c"] for c in counts}, 
+        "my_reaction": my[0]["emoji"] if my else None
     })
 
-
-# ============ AI LEARNS (Preference tracking) ============
-@app.route("/preferences")
-@login_required
-def preferences_view():
-    uid = session["user_id"]
-    # Get user's top liked colors/styles
-    actions = db.execute("SELECT action, item_id FROM preferences WHERE user_id = ?", uid)
-    color_count = {}
-    style_count = {}
-    for a in actions:
-        if a["item_id"]:
-            item = db.execute("SELECT color, style, occasion FROM items WHERE id = ?", a["item_id"])
-            if item:
-                it = item[0]
-                if it["color"]:
-                    color_count[it["color"]] = color_count.get(it["color"], 0) + 1
-                if it["style"]:
-                    style_count[it["style"]] = style_count.get(it["style"], 0) + 1
-
-    top_colors = sorted(color_count.items(), key=lambda x: x[1], reverse=True)[:5]
-    top_styles = sorted(style_count.items(), key=lambda x: x[1], reverse=True)[:5]
-
-    return render_template("preferences.html",
-        top_colors=top_colors, top_styles=top_styles,
-        total_actions=len(actions))
-
-
-@app.route("/track/<int:item_id>/<action>", methods=["POST"])
-@login_required
-def track_preference(item_id, action):
-    if action not in ["like", "dislike", "select"]:
-        return jsonify({"ok": False})
-    db.execute("INSERT INTO preferences (user_id, item_id, action) VALUES (?, ?, ?)",
-               session["user_id"], item_id, action)
-    return jsonify({"ok": True})

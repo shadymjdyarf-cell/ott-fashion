@@ -28,74 +28,132 @@
         <button class="close-btn" onclick="toggleSidebar()" aria-label="Close">×</button>
     </div>
     <nav class="sidebar-nav">
+
         {% if session.user_id %}
-            <a href="/">{{ t("home") }}</a>
-            <a href="/wardrobe">{{ t("wardrobe") }}</a>
-            <a href="/wishlist">{{ t("wishlist") }}</a>
-            <a href="/trends">{{ t("trends") }}</a>
-            <a href="/stylist">{{ t("stylist") }}</a>
-            <a href="/outfits">Outfits</a>
-            <a href="/progress">Progress</a>
-            <a href="/journal">Journal</a>
-            <a href="/challenges">Challenges</a>
-            <a href="/calendar">Calendar</a>
-            <a href="/tabs">Saved Filters</a>
-            <a href="/weather">Weather</a>
-            <a href="/korean-size">Korean Sizes</a>
-            <a href="/k-hashtags">K-Hashtags</a>
-            <a href="/before-after">Before/After</a>
-            <a href="/photo-editor">Photo Editor</a>
-            <a href="/korean-brands">Korean Brands</a>
-            <a href="/ocr">OCR Reader</a>
-            <a href="/barcode">Barcode Scanner</a>
-            <a href="/camera">Camera</a>
-            <a href="/discover">Discover</a>
-            <a href="/community">Community</a>
-            <a href="/idol-match">K-Idol Match</a>
-            <a href="/fashion-weeks">Fashion Weeks</a>
-            <a href="/photo-style">Photo Style AI</a>
-            <a href="/preferences">Style DNA</a>
-            <a href="/search">Search</a>
-            <a href="/profile">{{ t("profile") }}</a>
-            <a href="/help">{{ t("help") }}</a>
-            <a href="#" onclick="toggleDark(); return false;">{{ t("dark") }}</a>
-            <a href="#" onclick="toggleDyslexia(); return false;">Dyslexia font</a>
-            <a href="#" onclick="toggleReduceMotion(); return false;">Reduce motion</a>
-            <a href="#" onclick="speakPage(); return false;">Read aloud</a>
 
-            <div class="sidebar-section">
-                <span class="sidebar-label">Color theme</span>
-                <div class="theme-picker">
-                    <button class="theme-dot active" data-theme="default" onclick="setColorTheme('default'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                    <button class="theme-dot" data-theme="lavender" onclick="setColorTheme('lavender'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                    <button class="theme-dot" data-theme="rose" onclick="setColorTheme('rose'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                    <button class="theme-dot" data-theme="ocean" onclick="setColorTheme('ocean'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                    <button class="theme-dot" data-theme="forest" onclick="setColorTheme('forest'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                    <button class="theme-dot" data-theme="sunset" onclick="setColorTheme('sunset'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
-                </div>
+        <!-- MAIN -->
+        <div class="nav-group">
+            <button class="nav-group-title" onclick="toggleGroup(this)">
+                <span>🏠 Main</span>
+                <span class="nav-arrow">▾</span>
+            </button>
+            <div class="nav-group-items">
+                <a href="/">🏠 {{ t("home") }}</a>
+                <a href="/wardrobe">👕 {{ t("wardrobe") }}</a>
+                <a href="/wishlist">💭 {{ t("wishlist") }}</a>
+                <a href="/stylist">✨ {{ t("stylist") }}</a>
             </div>
+        </div>
 
-            <div class="sidebar-section">
-                <span class="sidebar-label">Text size</span>
-                <div class="font-size-btns">
-                    <button onclick="setFontSize('normal')">A</button>
-                    <button onclick="setFontSize('large')">A+</button>
-                    <button onclick="setFontSize('xl')">A++</button>
-                </div>
+        <!-- DISCOVER -->
+        <div class="nav-group">
+            <button class="nav-group-title" onclick="toggleGroup(this)">
+                <span>🔥 Discover</span>
+                <span class="nav-arrow">▾</span>
+            </button>
+            <div class="nav-group-items">
+                <a href="/trends">🔥 {{ t("trends") }}</a>
+                <a href="/discover">🎨 Discover</a>
+                <a href="/community">👥 Community</a>
+                <a href="/camera">📷 Camera</a>
             </div>
+        </div>
 
-            <div class="lang-switcher">
-                <span class="lang-label">Language</span>
-                <div class="lang-btns">
-                    <a href="/set_language/en" class="lang-btn {% if lang == 'en' %}active{% endif %}">EN</a>
-                    <a href="/set_language/ar" class="lang-btn {% if lang == 'ar' %}active{% endif %}">ع</a>
-                    <a href="/set_language/ko" class="lang-btn {% if lang == 'ko' %}active{% endif %}">한</a>
-                </div>
+        <!-- MY STUFF -->
+        <div class="nav-group">
+            <button class="nav-group-title" onclick="toggleGroup(this)">
+                <span>👤 My Stuff</span>
+                <span class="nav-arrow">▾</span>
+            </button>
+            <div class="nav-group-items">
+                <a href="/profile">👤 {{ t("profile") }}</a>
+                <a href="/outfits">🎨 My Outfits</a>
+                <a href="/progress">📊 Progress</a>
+                <a href="/journal">📔 Journal</a>
+                <a href="/challenges">🎯 Challenges</a>
+                <a href="/calendar">📅 Calendar</a>
+                <a href="/notifications">🔔 Notifications <span id="notif-badge" class="notif-badge" style="display:none;"></span></a>
             </div>
-            <a href="/logout" class="logout">{{ t("logout") }}</a>
+        </div>
+
+        <!-- TOOLS -->
+        <div class="nav-group">
+            <button class="nav-group-title" onclick="toggleGroup(this)">
+                <span>🛠️ Tools</span>
+                <span class="nav-arrow">▾</span>
+            </button>
+            <div class="nav-group-items">
+                <a href="/search_users">👥 Find People</a>
+                <a href="/search">🔍 Search</a>
+                <a href="/weather">🌤️ Weather</a>
+                <a href="/korean-size">📏 Korean Sizes</a>
+                <a href="/k-hashtags">#️⃣ K-Hashtags</a>
+                <a href="/korean-brands">🇰🇷 Korean Brands</a>
+                <a href="/fashion-weeks">🎬 Fashion Weeks</a>
+                <a href="/photo-editor">🎨 Photo Editor</a>
+                <a href="/ocr">📖 OCR Reader</a>
+                <a href="/barcode">📷 Barcode</a>
+                <a href="/before-after">✨ Before/After</a>
+                <a href="/idol-match">⭐ K-Idol Match</a>
+                <a href="/photo-style">📸 Photo Style AI</a>
+                <a href="/preferences">🧬 Style DNA</a>
+                <a href="/tabs">📌 Saved Filters</a>
+            </div>
+        </div>
+
+        <!-- PREFERENCES -->
+        <div class="nav-group">
+            <button class="nav-group-title" onclick="toggleGroup(this)">
+                <span>⚙️ Preferences</span>
+                <span class="nav-arrow">▾</span>
+            </button>
+            <div class="nav-group-items">
+                <a href="/help">📖 {{ t("help") }}</a>
+                <a href="#" onclick="toggleDark(); return false;">🌙 {{ t("dark") }}</a>
+                <a href="#" onclick="toggleDyslexia(); return false;">🔤 Dyslexia Font</a>
+                <a href="#" onclick="toggleReduceMotion(); return false;">🎬 Reduce Motion</a>
+                <a href="#" onclick="speakPage(); return false;">🔊 Read Aloud</a>
+            </div>
+        </div>
+
+        <!-- THEME -->
+        <div class="sidebar-section">
+            <span class="sidebar-label">🎨 Color theme</span>
+            <div class="theme-picker">
+                <button class="theme-dot active" data-theme="default" onclick="setColorTheme('default'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                <button class="theme-dot" data-theme="lavender" onclick="setColorTheme('lavender'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                <button class="theme-dot" data-theme="rose" onclick="setColorTheme('rose'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                <button class="theme-dot" data-theme="ocean" onclick="setColorTheme('ocean'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                <button class="theme-dot" data-theme="forest" onclick="setColorTheme('forest'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+                <button class="theme-dot" data-theme="sunset" onclick="setColorTheme('sunset'); document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('active')); this.classList.add('active');"></button>
+            </div>
+        </div>
+
+        <!-- FONT SIZE -->
+        <div class="sidebar-section">
+            <span class="sidebar-label">🔤 Text size</span>
+            <div class="font-size-btns">
+                <button onclick="setFontSize('normal')">A</button>
+                <button onclick="setFontSize('large')">A+</button>
+                <button onclick="setFontSize('xl')">A++</button>
+            </div>
+        </div>
+
+        <!-- LANGUAGE -->
+        <div class="lang-switcher">
+            <span class="lang-label">🌐 Language</span>
+            <div class="lang-btns">
+                <a href="/set_language/en" class="lang-btn {% if lang == 'en' %}active{% endif %}">EN</a>
+                <a href="/set_language/ar" class="lang-btn {% if lang == 'ar' %}active{% endif %}">ع</a>
+                <a href="/set_language/ko" class="lang-btn {% if lang == 'ko' %}active{% endif %}">한</a>
+            </div>
+        </div>
+
+        <a href="/logout" class="logout">🚪 {{ t("logout") }}</a>
+
         {% else %}
-            <a href="/login">{{ t("login") }}</a>
-            <a href="/register">{{ t("register") }}</a>
+            <a href="/login">🔑 {{ t("login") }}</a>
+            <a href="/register">✨ {{ t("register") }}</a>
         {% endif %}
     </nav>
 </aside>
@@ -124,14 +182,439 @@
 
 <script>
 window.OTT_LANG = "{{ lang|default('en') }}";
-window.OTT_TRANSLATIONS = { "en": {}, "ar": {}, "ko": {} };
+window.OTT_TRANSLATIONS = {
+    "en": {},
+    "ar": {
+        // Navigation
+        "Home": "الرئيسية", "Wardrobe": "خزانتي", "Wishlist": "أمنياتي",
+        "Trends": "الترندات", "Stylist": "المساعد", "Outfits": "أطقمي",
+        "Progress": "تقدمي", "Journal": "مذكراتي", "Challenges": "التحديات",
+        "Calendar": "التقويم", "Saved Filters": "المرشحات", "Weather": "الطقس",
+        "Korean Sizes": "المقاسات الكورية", "K-Hashtags": "هاشتاجات كورية",
+        "Before/After": "قبل/بعد", "Photo Editor": "محرر الصور",
+        "Korean Brands": "ماركات كورية", "OCR Reader": "قارئ النصوص",
+        "Barcode Scanner": "ماسح الباركود", "Camera": "الكاميرا",
+        "Discover": "اكتشف", "Search": "البحث", "Community": "المجتمع",
+        "K-Idol Match": "مطابقة الأيدول", "Fashion Weeks": "أسابيع الموضة",
+        "Photo Style AI": "تحليل الصور", "Style DNA": "حمضك الستايلي",
+        "Profile": "ملفي", "Help": "المساعدة", "Logout": "خروج",
+        "Dark mode": "الوضع الليلي",
+        "Dyslexia font": "خط الديسلكسيا",
+        "Reduce motion": "تقليل الحركة",
+        "Read aloud": "قراءة بصوت",
+        "Language": "اللغة", "Color theme": "ألوان الموقع",
+        "Text size": "حجم الخط",
+
+        // Buttons
+        "Save": "احفظ", "Cancel": "إلغاء", "Delete": "احذف",
+        "Remove": "امسح", "Edit": "عدّل", "Add": "ضيف",
+        "Search": "ابحث", "Share": "شارك", "Like": "أعجبني",
+        "Follow": "تابع", "Following": "تتابعه", "Unfollow": "إلغاء",
+        "Copy": "انسخ", "Post": "انشر", "Update": "حدّث",
+        "Reset": "إعادة", "Back": "رجوع", "Close": "اقفل",
+        "Next": "التالي", "Previous": "السابق", "Upload": "ارفع",
+        "Download": "حمّل", "Export": "صدّر", "Import": "استورد",
+        "Confirm": "أكّد", "Yes": "أيوة", "No": "لأ",
+
+        // Home
+        "Welcome back": "أهلاً بيك تاني",
+        "Korean Style Inspiration": "إلهام كوري",
+        "Trending Now": "الرائج حالياً",
+        "Browse by occasion": "تصفح حسب المناسبة",
+        "Style me now": "اقترحلي طقم",
+        "Add item": "ضيف قطعة",
+        "day streak": "يوم متتالي",
+        "Achievements": "الإنجازات",
+        "Total outfits": "إجمالي الأطقم",
+        "Wardrobe": "الخزانة", "Wishlist": "الأمنيات", "Outfits": "الأطقم",
+
+        // Wardrobe
+        "My Wardrobe": "خزانتي",
+        "All": "الكل", "Style:": "الستايل:",
+        "Find Duplicates": "ابحث عن المكرر",
+        "No items yet": "مفيش قطع بعد",
+        "Add your first piece and start building outfits": "ضيف أول قطعة وابدأ بناء أطقمك",
+        "Inspiration for": "إلهام لـ",
+        "Mark Viral": "علّم كرائج", "Viral": "رائج",
+
+        // Wishlist
+        "My Wishlist": "أمنياتي",
+        "Add a wish": "ضيف أمنية",
+        "What do you want?": "عايز إيه؟",
+        "Link": "رابط", "Price in USD": "السعر بالدولار",
+        "Details": "تفاصيل",
+        "I want to make this at home (DIY)": "عايز أعملها في البيت",
+        "Your wishlist is empty": "أمنياتك فاضية",
+        "Add what you are dreaming about": "ضيف اللي بتحلم بيه",
+        "Price History": "سجل الأسعار",
+        "Update price": "حدّث السعر",
+        "History": "السجل",
+        "New price": "السعر الجديد",
+        "Note": "ملاحظة",
+
+        // Add Item
+        "Add a piece": "ضيف قطعة",
+        "Name": "الاسم", "Occasion": "المناسبة",
+        "Pick occasion": "اختار المناسبة",
+        "Pick a style": "اختار الستايل",
+        "Color": "اللون", "Notes": "ملاحظات",
+        "Upload a photo": "ارفع صورة",
+        "Add to wardrobe": "ضيف للخزانة",
+        "Back to wardrobe": "رجوع للخزانة",
+
+        // Trends
+        "Trend Dictionary": "قاموس الترندات",
+        "Discover the latest fashion trends from around the world": "اكتشف أحدث صيحات الموضة",
+        "Search a trend": "ابحث عن ترند",
+        "Refresh All Sources": "حدّث كل المصادر",
+        "Korean Only": "كوري بس",
+        "Add Trend": "ضيف ترند",
+        "Back to Trends": "رجوع للترندات",
+        "What is it?": "إيه هو؟",
+        "How to wear it": "إزاي تلبسه",
+        "Style examples": "أمثلة",
+        "Save to Wishlist": "احفظ في الأمنيات",
+
+        // Stylist
+        "AI Stylist": "المساعد الذكي",
+        "Pick an occasion": "اختار مناسبة",
+        "Weather": "الجو", "Hot": "حر", "Cold": "برد",
+        "Mood": "المزاج",
+        "Confident": "واثق", "Chill": "هادي", "Bold": "جسور",
+        "Soft": "ناعم", "Playful": "مرح",
+        "Style me": "اقترحلي",
+        "Your outfit": "طقمك",
+        "Tip": "نصيحة",
+        "Why this outfit?": "ليه اخترت الطقم ده؟",
+        "Online inspiration": "إلهام من الإنترنت",
+        "Recent outfits": "أطقم حديثة",
+
+        // Camera
+        "Camera & Themes": "الكاميرا والثيمات",
+        "Pick a theme": "اختار ثيم",
+        "take a photo": "صوّر",
+        "get feedback": "خد رأي",
+        "Selected theme": "الثيم المختار",
+        "Open Camera": "افتح الكاميرا",
+        "Stop": "وقف", "Capture": "صوّر",
+        "Save to Wardrobe": "احفظ في الخزانة",
+        "Retake": "صوّر تاني",
+
+        // Discover
+        "Endless fashion inspiration": "إلهام لا نهائي",
+        "Search: korean fashion, street style, old money": "ابحث: موضة كورية، ستايل الشارع",
+
+        // Community
+        "Explore outfits from the OTT community": "شوف أطقم من مجتمع OTT",
+        "Top outfits": "أحلى الأطقم",
+        "Discover people": "اكتشف ناس",
+        "Comments": "التعليقات",
+        "Add a comment": "ضيف تعليق",
+
+        // Weather
+        "Today's weather in": "الطقس النهاردة في",
+        "Styling tip": "نصيحة للبس",
+        "Get outfit for today": "خد طقم للنهاردة",
+        "Wind": "الرياح",
+        "Clear sky": "سماء صافية",
+        "Mostly clear": "صافي غالباً",
+        "Partly cloudy": "غائم جزئياً",
+        "Overcast": "غائم",
+        "Foggy": "ضبابي",
+        "Light rain": "مطر خفيف",
+        "Rain": "مطر",
+        "Heavy rain": "مطر غزير",
+        "Snow": "تلج",
+        "Thunderstorm": "عاصفة رعدية",
+
+        // Journal
+        "Style Journal": "مذكرة الستايل",
+        "Document your fashion journey": "وثّق رحلتك في الموضة",
+        "New entry": "تدوينة جديدة",
+        "What did you wear today?": "لبست إيه النهاردة؟",
+        "Add entry": "ضيف تدوينة",
+        "No entries yet": "مفيش تدوينات بعد",
+        "Start journaling today": "ابدأ من النهاردة",
+        "Happy": "مبسوط", "Neutral": "عادي", "Tired": "تعبان",
+        "Excited": "متحمس",
+
+        // Challenges
+        "Challenges": "التحديات",
+        "New Challenge": "تحدي جديد",
+        "Active": "نشط", "Completed": "مكتمل",
+        "Progress": "التقدم",
+        "Wear a new color": "البس لون جديد",
+        "Style 5 outfits": "نسّق 5 أطقم",
+        "Try a new occasion": "جرب مناسبة جديدة",
+        "Add 5 items": "ضيف 5 قطع",
+        "Write 3 journal entries": "اكتب 3 تدوينات",
+
+        // Calendar
+        "My Calendar": "التقويم",
+        "Save your upcoming occasions": "احفظ مناسباتك القادمة",
+        "Add event": "ضيف مناسبة",
+        "Event name": "اسم المناسبة",
+        "No events yet": "مفيش مناسبات بعد",
+        "Add your first occasion": "ضيف أول مناسبة",
+
+        // Progress
+        "Your Progress": "تقدمك",
+        "Your fashion journey in numbers": "رحلتك بالأرقام",
+        "Day Streak": "يوم متتالي",
+        "Items": "القطع", "Wishes": "الأمنيات",
+        "Top Occasion": "أكتر مناسبة",
+        "Top Color": "أكتر لون",
+        "Top Style": "أكتر ستايل",
+        "Most Used Items": "أكتر القطع استخداماً",
+        "Favorite colors": "ألوانك المفضلة",
+        "Favorite styles": "ستايلاتك المفضلة",
+        "times": "مرة",
+        "Interactions": "تفاعلات",
+
+        // Saved Filters
+        "Saved Filters": "المرشحات المحفوظة",
+        "Save your favorite filter combinations": "احفظ تركيبات المرشحات",
+        "Save current filter": "احفظ المرشح الحالي",
+        "Filter name": "اسم المرشح",
+        "No saved filters yet": "مفيش مرشحات محفوظة",
+
+        // K-Hashtags
+        "Trending K-Hashtags": "هاشتاجات كورية رائجة",
+        "Popular hashtags in Korean fashion community": "هاشتاجات مشهورة في مجتمع الموضة الكورية",
+
+        // Korean Sizes
+        "Korean Size Converter": "محوّل المقاسات الكورية",
+        "Convert between international and Korean sizes": "حوّل بين المقاسات العالمية والكورية",
+        "Women's Tops": "بلوزات نسائية",
+        "Women's Shoes": "أحذية نسائية",
+        "Men's Tops": "قمصان رجالية",
+        "Men's Shoes": "أحذية رجالية",
+
+        // Korean Brands
+        "Korean Brands": "ماركات كورية",
+        "Best of K-fashion": "أحلى الموضة الكورية",
+        "Visit": "زور",
+
+        // Before/After
+        "Before / After": "قبل / بعد",
+        "Show your style transformations": "وري تحولات ستايلك",
+        "Add transformation": "ضيف تحول",
+        "Title": "العنوان",
+        "Story behind this change": "الحكاية ورا التغيير",
+        "Before photo": "صورة قبل",
+        "After photo": "صورة بعد",
+        "Save transformation": "احفظ التحول",
+        "Your transformations": "تحولاتك",
+        "Before": "قبل", "After": "بعد",
+
+        // Photo Editor
+        "Photo Editor": "محرر الصور",
+        "Enhance your item photos": "حسّن صور هدومك",
+        "Choose item": "اختار قطعة",
+        "Select an item": "اختار قطعة",
+        "Original": "الأصلي", "B&W": "أبيض وأسود",
+        "Sepia": "بني قديم", "Vivid": "زاهي",
+        "Bright": "مضيء", "Warm": "دافي", "Cool": "بارد",
+        "Blur": "ضبابي",
+        "Save changes": "احفظ التغييرات",
+
+        // OCR
+        "Read Text from Photo": "اقرأ نص من صورة",
+        "Extract brand names from photos": "استخرج اسم الماركة من صورة",
+        "Read text": "اقرأ النص",
+        "Detected text": "النص المكتشف",
+        "Reading": "بيقرا",
+        "Done": "خلص",
+
+        // Barcode
+        "Scan product barcodes": "امسح باركود المنتجات",
+        "Start camera scan": "ابدأ مسح الكاميرا",
+        "Barcode detected": "تم كشف باركود",
+
+        // Fashion Weeks
+        "Latest from global runways": "آخر أخبار عروض الموضة",
+        "Major Fashion Weeks": "أسابيع الموضة الكبرى",
+        "Latest runway news": "آخر أخبار العروض",
+
+        // K-Idol Match
+        "Which Idol Matches Your Style?": "أي أيدول يطابق ستايلك؟",
+        "Analyzed from your wardrobe": "تحليل من خزانتك",
+        "match": "تطابق",
+        "Add at least 3 items": "ضيف 3 قطع على الأقل",
+
+        // Photo Style
+        "Photo Style AI": "تحليل الصور",
+        "Upload a photo": "ارفع صورة",
+        "get outfit ideas from your wardrobe": "خد أفكار من خزانتك",
+        "Analyze & Style me": "حلّل واقترح",
+        "Suggested items": "قطع مقترحة",
+
+        // Style DNA
+        "Your Style DNA": "حمضك الستايلي",
+        "Learned from your choices": "اتعلم من اختياراتك",
+        "Start liking items": "ابدأ تعمل إعجاب بالقطع",
+        "Every interaction helps OTT learn": "كل تفاعل يساعد OTT يتعلم",
+
+        // Outfits History
+        "My Outfits": "أطقمي",
+        "All the outfits you have created": "كل الأطقم اللي عملتها",
+        "You have not created any outfits yet": "معملتش أطقم بعد",
+        "Try the AI Stylist": "جرب المساعد الذكي",
+
+        // Profile
+        "Edit profile": "عدّل بياناتك",
+        "Username": "اسم المستخدم", "Email": "الإيميل",
+        "City": "المدينة", "Country": "البلد",
+        "Bio": "نبذة",
+        "Save changes": "احفظ التعديلات",
+        "Settings": "الإعدادات",
+        "Export my data": "صدّر بياناتي",
+        "Change password": "غيّر الباسورد",
+        "Delete my account": "احذف حسابي",
+        "Upload photo": "ارفع صورة",
+        "Choose emoji": "اختار إيموجي",
+        "Recent items": "قطع حديثة",
+        "Confirm deletion": "تأكيد الحذف",
+        "Delete forever": "احذف نهائياً",
+        "Followers": "المتابعين",
+        "Following": "يتابع",
+
+        // Auth
+        "Welcome to OTT": "أهلاً بيك في OTT",
+        "Create account": "أنشئ حساب",
+        "Already have an account?": "عندك حساب؟",
+        "New here?": "أول مرة هنا؟",
+        "Confirm password": "تأكيد الباسورد",
+        "Password": "الباسورد",
+        "Login": "دخول", "Join": "انضم",
+        "Back to your wardrobe": "رجوع لخزانتك",
+        "Forgot password?": "نسيت الباسورد؟",
+        "Reset password": "إعادة التعيين",
+        "New password": "باسورد جديد",
+
+        // Help
+        "How to use OTT": "إزاي تستخدم OTT",
+        "Quick guide": "دليل سريع",
+        "Start in 3 steps": "ابدأ في 3 خطوات",
+        "Sign up": "سجل حساب",
+        "Add clothes": "ضيف هدومك",
+        "Get styled": "خد اقتراحات",
+        "What is inside": "إيه اللي جوه",
+        "Confidence first": "الثقة أولاً",
+        "FAQ": "أسئلة شائعة",
+
+        // Common
+        "or": "أو", "and": "و", "with": "مع",
+        "total": "الإجمالي", "of": "من",
+        "No": "لأ", "Yes": "أيوة",
+        "Loading": "تحميل",
+        "Loading more...": "جاري التحميل...",
+        "Today is your day": "النهاردة يومك",
+        "wear what you love": "البس اللي بتحبه",
+    },
+    "ko": {
+        // Navigation
+        "Home": "홈", "Wardrobe": "옷장", "Wishlist": "위시리스트",
+        "Trends": "트렌드", "Stylist": "스타일리스트", "Outfits": "코디",
+        "Progress": "진행상황", "Journal": "저널", "Challenges": "챌린지",
+        "Calendar": "캘린더", "Saved Filters": "저장된 필터", "Weather": "날씨",
+        "Korean Sizes": "한국 사이즈", "K-Hashtags": "K-해시태그",
+        "Before/After": "전/후", "Photo Editor": "사진 편집",
+        "Korean Brands": "한국 브랜드", "OCR Reader": "텍스트 읽기",
+        "Barcode Scanner": "바코드 스캐너", "Camera": "카메라",
+        "Discover": "탐색", "Search": "검색", "Community": "커뮤니티",
+        "K-Idol Match": "K-아이돌 매치", "Fashion Weeks": "패션 위크",
+        "Photo Style AI": "사진 스타일 AI", "Style DNA": "스타일 DNA",
+        "Profile": "프로필", "Help": "도움말", "Logout": "로그아웃",
+        "Dark mode": "다크 모드",
+        "Language": "언어", "Color theme": "색상 테마",
+        "Text size": "텍스트 크기",
+
+        // Buttons
+        "Save": "저장", "Cancel": "취소", "Delete": "삭제",
+        "Remove": "제거", "Edit": "편집", "Add": "추가",
+        "Search": "검색", "Share": "공유", "Like": "좋아요",
+        "Follow": "팔로우", "Following": "팔로잉",
+        "Copy": "복사", "Post": "게시", "Update": "업데이트",
+        "Back": "뒤로", "Close": "닫기",
+        "Upload": "업로드", "Download": "다운로드",
+        "Export": "내보내기",
+        "Confirm": "확인", "Yes": "예", "No": "아니오",
+
+        // Home
+        "Welcome back": "다시 오신 것을 환영합니다",
+        "Korean Style Inspiration": "한국 스타일 영감",
+        "Trending Now": "지금 인기",
+        "Browse by occasion": "상황별로 찾아보기",
+        "Style me now": "스타일 추천",
+        "Add item": "아이템 추가",
+        "day streak": "일 연속",
+        "Achievements": "업적",
+        "Total outfits": "총 코디",
+
+        // Common
+        "Today is your day": "오늘은 당신의 날입니다",
+        "wear what you love": "좋아하는 것을 입으세요",
+        "Loading more...": "더 로딩 중...",
+    }
+};
 </script>
 <div id="lightbox" class="lightbox" onclick="closeLightbox()">
     <span class="lightbox-close">&times;</span>
     <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
 </div>
 
+<!-- Story Viewer Modal -->
+<div id="story-viewer" class="story-viewer" onclick="closeStory()">
+    <span class="story-close">&times;</span>
+    <div id="story-content"></div>
+</div>
+
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+var storyData = {};
+function openOwnStory(id) {
+    fetch('/p/' + id + '?json=1')
+        .then(r => r.json())
+        .then(data => {
+            var viewer = document.getElementById('story-viewer');
+            var content = document.getElementById('story-content');
+            if (data.media_type === 'video') {
+                content.innerHTML = '<video src="' + data.media_url + '" controls autoplay style="max-width:90vw;max-height:80vh;border-radius:12px;"></video>';
+            } else {
+                content.innerHTML = '<img src="' + data.media_url + '" style="max-width:90vw;max-height:80vh;border-radius:12px;">';
+            }
+            viewer.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(function() { alert('Story not available'); });
+}
+
+function openStory(id) {
+    fetch('/p/' + id + '?json=1')
+        .then(r => r.json())
+        .then(data => {
+            var viewer = document.getElementById('story-viewer');
+            var content = document.getElementById('story-content');
+            if (data.media_type === 'video') {
+                content.innerHTML = '<video src="' + data.media_url + '" controls autoplay style="max-width:90vw;max-height:90vh;border-radius:12px;"></video>';
+            } else {
+                content.innerHTML = '<img src="' + data.media_url + '" style="max-width:90vw;max-height:90vh;border-radius:12px;">';
+            }
+            viewer.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(err => alert('Could not open story'));
+}
+function closeStory() {
+    document.getElementById('story-viewer').classList.remove('active');
+    document.getElementById('story-content').innerHTML = '';
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeStory();
+});
+</script>
 <script>
 function openLightbox(src) {
     document.getElementById('lightbox-img').src = src;
